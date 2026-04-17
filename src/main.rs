@@ -1,10 +1,13 @@
 use std::time::Duration;
 
+use glam::{Vec3, Vec3A};
+
 use crate::video::{Image, Pixel, Surface, WindowSurface};
 
 mod bvh;
 mod math;
 mod video;
+mod render;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut ws = WindowSurface::new([80, 80])?;
