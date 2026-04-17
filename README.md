@@ -13,5 +13,6 @@ Development start: 16th of April 2026
     - [ ] Möller–Trumbore intersection POC
 - [ ] A camera that can change configuration
 - [ ] Multi-triangle rendering
+    - [ ] For now via iterating one by one
 - [ ] BVH(May move)
 - [ ] Point light
