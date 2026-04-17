@@ -1,11 +1,11 @@
-
+use crate::math::Vec3;
 
 #[derive(Clone, Copy)]
 pub struct Bound {
     /// Minimum coordinate
-    min: [f32; 3],
+    pub min: Vec3,
     /// Maximum coordinate
-    max: [f32; 3],
+    pub max: Vec3,
 }
 
 pub trait Bounded {
