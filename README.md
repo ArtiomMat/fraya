@@ -6,12 +6,12 @@ Development start: 16th of April 2026
 
 # TODO
 
-- [ ] Trace a single triangle
+- [x] Trace a single triangle
     - [x] Surfaces for rendering on
     - [x] SDL window surface
-    - [ ] Render module with high level primitives
-    - [ ] Möller–Trumbore intersection POC
-- [ ] A camera that can change configuration
+    - [x] Render module with high level primitives
+    - [x] Möller–Trumbore intersection POC
+- [ ] A camera that can move and look
 - [ ] Multi-triangle rendering
     - [ ] For now via iterating one by one
 - [ ] BVH(May move)
