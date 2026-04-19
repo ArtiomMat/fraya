@@ -74,11 +74,16 @@ impl RayTracer {
     }
 
     /// Returns the raw render image.
+    /// 
+    /// You should use `finish()` to actually get a full result to pass to
+    /// the advanced post-processing steps(e.g. denoiser).
     pub fn raw_image(&self) -> &Image {
         &self.image
     }
 
     // TODO: Hardcoded and not intended to exist in future
+    // TODO: Return a sort of "Report" struct that reports how many samples
+    //       were made this iteration and stuff. But OFC that's for later...
     pub fn render_single_triangle(&mut self, triangle: &Triangle) {
         // TODO: Figure out how to give freedom of changing FOV
         
@@ -111,7 +116,5 @@ impl RayTracer {
                 }
             }
         }
-
-        // Render
     }
 }
