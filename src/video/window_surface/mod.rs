@@ -1,16 +1,40 @@
 pub use error::Error;
-use sdl3::{Sdl, pixels::PixelFormat, render::{Texture, TextureAccess, TextureCreator}, video::WindowContext};
+pub use event::WindowEvent;
+
+use sdl3::{
+    Sdl,
+    pixels::PixelFormat,
+    render::{Texture, TextureAccess, TextureCreator},
+    video::WindowContext,
+};
 
 use crate::video::{Image, Surface};
 
 pub mod error;
+pub mod event;
 
 pub struct WindowSurface {
     _sdl: Sdl,
+    event_pump: sdl3::EventPump,
     _video: sdl3::VideoSubsystem,
     canvas: sdl3::render::Canvas<sdl3::video::Window>,
     texture_creator: TextureCreator<WindowContext>,
     size: [u32; 2],
+}
+
+pub struct WindowEventIterator<'a> {
+    inner: sdl3::event::EventPollIterator<'a>,
+}
+
+impl Iterator for WindowEventIterator<'_> {
+    type Item = WindowEvent;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.inner.next()? {
+            sdl3::event::Event::Quit { .. } => Some(WindowEvent::Quit),
+            _ => Some(WindowEvent::Unknown),
+        }
+    }
 }
 
 impl WindowSurface {
@@ -23,14 +47,22 @@ impl WindowSurface {
             .map_err(|e| Error::Sdl3(format!("{}", e)))?
             .into_canvas();
         let texture_creator = canvas.texture_creator();
+        let event_pump = sdl.event_pump()?;
 
         Ok(Self {
             _sdl: sdl,
             _video: video,
             canvas,
+            event_pump: event_pump,
             texture_creator,
-            size: initial_size
+            size: initial_size,
         })
+    }
+
+    pub fn event_iter(&mut self) -> WindowEventIterator<'_> {
+        WindowEventIterator {
+            inner: self.event_pump.poll_iter(),
+        }
     }
 }
 
@@ -38,19 +70,20 @@ impl Surface for WindowSurface {
     fn update_image(&mut self, img: &Image) -> Result<(), Box<dyn std::error::Error>> {
         // Resize if not the right size
         if self.size != img.size {
-            self.canvas.window_mut().set_size(img.size[0], img.size[1])?;
+            self.canvas
+                .window_mut()
+                .set_size(img.size[0], img.size[1])?;
             self.size = img.size;
         }
 
         // TODO: Creating every time here may cost us quite a bit so rethink.
-        let mut t = self.texture_creator
-        .create_texture(
+        let mut t = self.texture_creator.create_texture(
             Some(PixelFormat::BGRA8888),
             TextureAccess::Streaming,
             self.size[0],
             self.size[1],
         )?;
-    
+
         t.with_lock(None, |pixels, _| {
             for (i, p) in img.pixels.iter().enumerate() {
                 pixels[i * 4 + 0] = p.a;

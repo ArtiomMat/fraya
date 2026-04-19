@@ -65,5 +65,8 @@ impl Renderer {
     }
 
     // TODO: Hardcoded and not intended to exist in future
-    pub fn render_single_triangle(&mut self, surface: &mut dyn Surface, triangle: &Triangle) {}
+    pub fn render_single_triangle(&mut self, surface: &mut dyn Surface, triangle: &Triangle) {
+        let fov: f32 = 90.0;
+        
+    }
 }

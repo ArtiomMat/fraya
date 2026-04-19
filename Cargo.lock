@@ -68,16 +68,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4512299f36f043ab09a583e57bceb5a5aab7a73db1805848e8fef3c9e8c78b3"
 
 [[package]]
-name = "bvh"
-version = "0.1.0"
-dependencies = [
- "env_logger",
- "fastrand",
- "glam",
- "sdl3",
-]
-
-[[package]]
 name = "colorchoice"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -111,6 +101,16 @@ name = "fastrand"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f1f227452a390804cdb637b74a86990f2a7d7ba4b7d5693aac9b4dd6defd8d6"
+
+[[package]]
+name = "fraya"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "fastrand",
+ "glam",
+ "sdl3",
+]
 
 [[package]]
 name = "glam"
