@@ -15,6 +15,11 @@ impl Default for Pixel {
     }
 }
 
+pub struct ImageSettings {
+    pub pixels: Vec<Pixel>,
+    pub size: [u32; 2],
+}
+
 pub struct Image {
     pub pixels: Vec<Pixel>,
     pub size: [u32; 2],

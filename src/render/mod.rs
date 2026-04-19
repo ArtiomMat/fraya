@@ -1,22 +1,28 @@
-// pub use camera::Camera;
+pub use eye::Eye;
 
-// pub mod camera;
+pub mod eye;
 
-use crate::math::{Ray, Triangle, Vec3};
+use crate::math::{EPSILON, Ray, Triangle, Vec3};
+use crate::scene::Scene;
 use crate::video::{Image, Pixel, Surface};
 
-const EPSILON: f32 = 0.0001;
-
-pub struct Renderer {
-    img: Image,
+/// Takes ownership of the scene, settings, surface and specializes
+/// itself to that particular configuration of objects passed.
+pub struct RayTracer {
+    image: Image,
+    eye: Eye,
+    scene: Scene,
     aspect_ratio: f32,
 }
 
-impl Renderer {
-    pub fn new(size: [u32; 2]) -> Self {
-        Renderer {
-            img: Image::new_black(size),
-            aspect_ratio: size[1] as f32 / size[0] as f32,
+impl RayTracer {
+    pub fn new(image: Image, eye: Eye, scene: Scene) -> Self {
+        let aspect_ratio = image.size[1] as f32 / image.size[0] as f32;
+        RayTracer {
+            image,
+            eye,
+            scene,
+            aspect_ratio,
         }
     }
 
@@ -67,30 +73,36 @@ impl Renderer {
         }
     }
 
+    /// Returns the raw render image.
+    pub fn raw_image(&self) -> &Image {
+        &self.image
+    }
+
     // TODO: Hardcoded and not intended to exist in future
-    pub fn render_single_triangle(&mut self, surface: &mut dyn Surface, triangle: &Triangle) {
+    pub fn render_single_triangle(&mut self, triangle: &Triangle) {
         // TODO: Figure out how to give freedom of changing FOV
         
         // Fill with black.
-        self.img.pixels.fill(Pixel::default());
+        self.image.pixels.fill(Pixel::default());
 
         // Shooting each ray towards the unit screen
-        for x in 0..self.img.size[0] {
-            for y in 0..self.img.size[1] {
+        for x in 0..self.image.size[0] {
+            for y in 0..self.image.size[1] {
                 let direction = Vec3::new(
-                    2.0 * (x as f32 / self.img.size[0] as f32 - 0.5) * self.aspect_ratio,
-                    2.0 * (y as f32 / self.img.size[1] as f32 - 0.5),
+                    2.0 * (x as f32 / self.image.size[0] as f32 - 0.5) * self.aspect_ratio,
+                    2.0 * (y as f32 / self.image.size[1] as f32 - 0.5),
                     -1.0,
                 )
                 .normalize();
                 let ray = Ray {
                     origin: Vec3::ZERO,
-                    direction,
+                    direction: self.eye.rotation * direction,
                 };
 
+                // TODO: Hardcoded
                 // Ray hit
                 if let Some(ray_hit) = Self::calculate_ray_triangle_intersection(&ray, triangle) {
-                    self.img.pixels[(x + y * self.img.size[0]) as usize] = Pixel {
+                    self.image.pixels[(x + y * self.image.size[0]) as usize] = Pixel {
                         b: 0,
                         g: (255.0 * (ray_hit.z.abs() - 1.0) / 5.0) as u8,
                         r: 0,
@@ -101,6 +113,5 @@ impl Renderer {
         }
 
         // Render
-        surface.update_image(&self.img).expect("Couldn't update");
     }
 }

@@ -1,21 +1,30 @@
 use std::time::Duration;
 
-use glam::{Vec3, Vec3A};
-
-use crate::{math::Triangle, render::Renderer, video::{window_surface::WindowEvent, Image, Pixel, Surface, WindowSurface}};
+use crate::{math::{Quat, Triangle, Vec3}, render::{Eye, RayTracer, eye::EyeSettings}, scene::Scene, video::{Image, Pixel, Surface, WindowSurface, window_surface::WindowEvent}};
 
 mod bvh;
 mod math;
 mod video;
 mod render;
+mod scene;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut ws = WindowSurface::new([300, 300])?;
-    let mut r = Renderer::new([300, 300]);
+    let mut rt = RayTracer::new(
+        Image::new_black([300, 300]),
+        Eye {
+            position: Vec3::new(0.0, 0.0, 0.0),
+            rotation: Quat::from_euler(glam::EulerRot::XYZ, 0.0, 0.0, 0.0),
+            settings: EyeSettings {
+                samples_per_pixel: 3,
+            },
+        },
+        Scene {}
+    );
     let triangle = Triangle {
-        a: Vec3::new(-0.5, 0.5, -2.5),
-        b: Vec3::new(-0.5, 0.0, -4.0),
-        c: Vec3::new(0.5, -0.4, -2.0),
+        a: Vec3::new(-0.7, 0.5, -2.5),
+        b: Vec3::new(-0.7, 0.0, -4.0),
+        c: Vec3::new(0.7, 0.7, -2.0),
     };
 
     // let mut p = vec![Pixel::default(); 80 * 80];
@@ -36,7 +45,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 _ => {},
             }
         }
-        r.render_single_triangle(&mut ws, &triangle);
+        rt.render_single_triangle(&triangle);
+        
+        ws.update_image(rt.raw_image()).expect("Couldn't update");
+        
         std::thread::sleep(Duration::from_millis(100));
     }
 
