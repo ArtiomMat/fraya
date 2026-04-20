@@ -1,5 +1,5 @@
 pub use error::Error;
-pub use event::WindowEvent;
+pub use event::{WindowEvent, WindowEventIterator};
 
 use sdl3::{
     Sdl,
@@ -20,21 +20,6 @@ pub struct WindowSurface {
     canvas: sdl3::render::Canvas<sdl3::video::Window>,
     texture_creator: TextureCreator<WindowContext>,
     size: [u32; 2],
-}
-
-pub struct WindowEventIterator<'a> {
-    inner: sdl3::event::EventPollIterator<'a>,
-}
-
-impl Iterator for WindowEventIterator<'_> {
-    type Item = WindowEvent;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.inner.next()? {
-            sdl3::event::Event::Quit { .. } => Some(WindowEvent::Quit),
-            _ => Some(WindowEvent::Unknown),
-        }
-    }
 }
 
 impl WindowSurface {

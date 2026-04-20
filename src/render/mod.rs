@@ -2,7 +2,7 @@ pub use eye::Eye;
 
 pub mod eye;
 
-use crate::math::{EPSILON, Ray, Triangle, Vec3};
+use crate::math::{vec3, Ray, Triangle, Vec3, EPSILON};
 use crate::scene::Scene;
 use crate::video::{Image, Pixel, Surface};
 
@@ -81,6 +81,10 @@ impl RayTracer {
         &self.image
     }
 
+    pub fn eye_mut(&mut self) -> &mut Eye {
+        &mut self.eye
+    }
+
     // TODO: Hardcoded and not intended to exist in future
     // TODO: Return a sort of "Report" struct that reports how many samples
     //       were made this iteration and stuff. But OFC that's for later...
@@ -96,11 +100,12 @@ impl RayTracer {
                 let direction = Vec3::new(
                     2.0 * (x as f32 / self.image.size[0] as f32 - 0.5) * self.aspect_ratio,
                     2.0 * (y as f32 / self.image.size[1] as f32 - 0.5),
-                    -1.0,
+                    vec3::FORWARD.z,
                 )
                 .normalize();
+
                 let ray = Ray {
-                    origin: Vec3::ZERO,
+                    origin: self.eye.position,
                     direction: self.eye.rotation * direction,
                 };
 
