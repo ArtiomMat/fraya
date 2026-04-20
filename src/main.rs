@@ -1,12 +1,19 @@
 use std::time::Duration;
 
-use crate::{math::{vec3, Quat, Triangle, Vec3}, render::{eye::EyeSettings, Eye, RayTracer}, scene::Scene, video::{window_surface::event::{Key, WindowEvent}, Image, Pixel, Surface, WindowSurface}};
+use crate::{
+    math::{vec3, Quat, Triangle, Vec3},
+    render::{eye::EyeSettings, Eye, RayTracer},
+    scene::Scene,
+    video::{
+        window_surface::event::{Key, MouseButton, WindowEvent}, Image, Pixel, Surface, WindowSurface
+    },
+};
 
 mod bvh;
 mod math;
-mod video;
 mod render;
 mod scene;
+mod video;
 
 struct EyeController {
     speed: f32,
@@ -14,6 +21,9 @@ struct EyeController {
     right: f32,
     backward: f32,
     left: f32,
+    look_x: f32,
+    look_y: f32,
+    is_looking: bool,
 }
 
 impl EyeController {
@@ -24,6 +34,9 @@ impl EyeController {
             right: 0.0,
             backward: 0.0,
             left: 0.0,
+            look_x: 0.0,
+            look_y: 0.0,
+            is_looking: false,
         }
     }
 
@@ -37,23 +50,47 @@ impl EyeController {
 
     pub fn process_key(&mut self, k: Key, down: bool) {
         match k {
-            Key::A => Self::apply_move(&mut self.left, down), 
-            Key::D => Self::apply_move(&mut self.right, down), 
-            Key::W => Self::apply_move(&mut self.forward, down), 
-            Key::S => Self::apply_move(&mut self.backward, down), 
+            Key::A => Self::apply_move(&mut self.left, down),
+            Key::D => Self::apply_move(&mut self.right, down),
+            Key::W => Self::apply_move(&mut self.forward, down),
+            Key::S => Self::apply_move(&mut self.backward, down),
             _ => {}
         }
     }
 
+    pub fn process_mouse_button(&mut self, b: MouseButton, down: bool) {
+        match b {
+            MouseButton::Left => {
+                self.look_x = 0.0;
+                self.look_y = 0.0;
+                if down {
+                    self.is_looking = true;
+                } else {
+                    self.is_looking = false;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    pub fn process_mouse_delta(&mut self, dx: f32, dy: f32) {
+        if self.is_looking {
+            self.look_x = 0.1 * dy;
+            self.look_y = -0.1 * dx;
+        }
+    }
+
     pub fn control_eye(&self, eye: &mut Eye) {
-        let position_delta = eye.rotation * Vec3::new(
-            vec3::RIGHT.x * (self.right - self.left),
-            0.0,
-            vec3::FORWARD.z * (self.forward - self.backward),
-        ).normalize_or_zero();
+        let position_delta = eye.rotation
+            * Vec3::new(
+                vec3::RIGHT.x * (self.right - self.left),
+                0.0,
+                vec3::FORWARD.z * (self.forward - self.backward),
+            )
+            .normalize_or_zero();
 
         eye.position += self.speed * position_delta;
-        eye.rotation *= Quat::from_euler(glam::EulerRot::ZYX, 0.0, 0.6, 0.0);
+        eye.rotation *= Quat::from_euler(glam::EulerRot::XYZ, self.look_x, self.look_y, 0.0);
     }
 }
 
@@ -68,7 +105,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 samples_per_pixel: 3,
             },
         },
-        Scene {}
+        Scene {},
     );
     let triangle = Triangle {
         a: Vec3::new(-0.7, 0.5, -2.5),
@@ -86,16 +123,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 WindowEvent::Quit => break 'running,
                 WindowEvent::KeyDown(k) => eye_controller.process_key(k, true),
                 WindowEvent::KeyUp(k) => eye_controller.process_key(k, false),
-                _ => {},
+                WindowEvent::MouseDelta(dx, dy) => eye_controller.process_mouse_delta(dx, dy),
+                WindowEvent::MouseButtonDown(b) => eye_controller.process_mouse_button(b, true),
+                WindowEvent::MouseButtonUp(b) => eye_controller.process_mouse_button(b, false),
+                _ => {}
             }
         }
 
         eye_controller.control_eye(rt.eye_mut());
 
         rt.render_single_triangle(&triangle);
-        
+
         ws.update_image(rt.raw_image()).expect("Couldn't update");
-        
+
         std::thread::sleep(Duration::from_millis(20));
     }
 

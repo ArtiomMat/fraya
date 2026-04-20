@@ -134,11 +134,20 @@ pub enum Key {
     MediaPreviousTrack,
 }
 
+pub enum MouseButton {
+    Left,
+    Middle,
+    Right,
+}
+
 pub enum WindowEvent {
     Unknown,
     Quit,
     KeyDown(Key),
     KeyUp(Key),
+    MouseDelta(f32, f32),
+    MouseButtonDown(MouseButton),
+    MouseButtonUp(MouseButton),
 }
 
 /// A thin wrapper for the sdl3 crate's EventPollIterator.
@@ -160,6 +169,18 @@ impl Iterator for WindowEventIterator<'_> {
             sdl3::event::Event::KeyUp {
                 keycode: Some(kc), ..
             } => from_sdl_keycode(kc).map(WindowEvent::KeyUp),
+
+            sdl3::event::Event::MouseMotion { xrel, yrel, .. } => {
+                Some(WindowEvent::MouseDelta(xrel, yrel))
+            }
+
+            sdl3::event::Event::MouseButtonDown { mouse_btn, .. } => {
+                from_sdl_mouse_button(mouse_btn).map(WindowEvent::MouseButtonDown)
+            }
+            
+            sdl3::event::Event::MouseButtonUp { mouse_btn, .. } => {
+                from_sdl_mouse_button(mouse_btn).map(WindowEvent::MouseButtonUp)
+            }
 
             _ => Some(WindowEvent::Unknown),
         }
@@ -233,6 +254,16 @@ fn from_sdl_keycode(keycode: sdl3::keyboard::Keycode) -> Option<Key> {
         LGui => Key::MetaLeft,
         RGui => Key::MetaRight,
 
+        _ => return None,
+    })
+}
+
+fn from_sdl_mouse_button(btn: sdl3::mouse::MouseButton) -> Option<MouseButton> {
+    use sdl3::mouse::MouseButton::*;
+    Some(match btn {
+        Left => MouseButton::Left,
+        Middle => MouseButton::Middle,
+        Right => MouseButton::Right,
         _ => return None,
     })
 }
