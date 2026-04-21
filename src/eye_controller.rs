@@ -1,4 +1,8 @@
-use crate::{math::{vec3, Quat, Vec3}, render::Eye, video::window_surface::event::{Key, MouseButton}};
+use crate::{
+    math::{Quat, Vec3, vec3},
+    render::Eye,
+    video::window_surface::event::{Key, MouseButton},
+};
 
 /// A debug controller for an Eye.
 ///
@@ -35,11 +39,7 @@ impl EyeController {
     }
 
     pub fn apply_move(x: &mut f32, down: bool) {
-        if down {
-            *x = 1.0;
-        } else {
-            *x = 0.0;
-        }
+        *x = if down { 1.0 } else { 0.0 };
     }
 
     pub fn process_key(&mut self, k: Key, down: bool) {
@@ -58,11 +58,7 @@ impl EyeController {
     pub fn process_mouse_button(&mut self, b: MouseButton, down: bool) {
         match b {
             MouseButton::Left => {
-                if down {
-                    self.is_looking = true;
-                } else {
-                    self.is_looking = false;
-                }
+                self.is_looking = down;
             }
             _ => {}
         }
@@ -70,8 +66,8 @@ impl EyeController {
 
     pub fn process_mouse_delta(&mut self, dx: f32, dy: f32) {
         if self.is_looking {
-            self.look_x = 0.1 * dy;
-            self.look_y = -0.1 * dx;
+            self.look_x = 0.05 * dy;
+            self.look_y = -0.05 * dx;
         }
     }
 
@@ -88,9 +84,16 @@ impl EyeController {
         eye.rotation *= Quat::from_euler(glam::EulerRot::XYZ, self.look_x, self.look_y, 0.0);
         self.look_x = 0.0;
         self.look_y = 0.0;
+        
         if self.reset_look_z {
             self.reset_look_z = false;
-            eye.rotation *= Quat::from_euler(glam::EulerRot::XYZ, 0.0, 0.0, eye.rotation.to_euler(glam::EulerRot::XYZ).2).inverse();
+            eye.rotation *= Quat::from_euler(
+                glam::EulerRot::XYZ,
+                0.0,
+                0.0,
+                eye.rotation.to_euler(glam::EulerRot::XYZ).2,
+            )
+            .inverse();
         }
     }
 }

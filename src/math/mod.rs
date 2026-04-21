@@ -2,6 +2,7 @@
 
 pub use aabb::Bound;
 pub use vec3::Vec3;
+pub use vec2::Vec2;
 pub use quat::Quat;
 pub use triangle::Triangle;
 pub use ray::Ray;
@@ -9,6 +10,7 @@ pub use ray::Ray;
 pub mod aabb;
 pub mod quat;
 pub mod vec3;
+pub mod vec2;
 pub mod triangle;
 pub mod ray;
 

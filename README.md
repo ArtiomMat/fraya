@@ -13,6 +13,9 @@ Development start: 16th of April 2026
     - [x] Möller–Trumbore intersection POC
 - [x] A camera that can move and look
 - [ ] Multi-triangle rendering
-    - [ ] For now via iterating one by one
+    - [ ] The concept of a `Model`.
+    - [ ] Finding a way to 
+    - [ ] Rendering a `Model`.
+    - [ ] For now via iterating one by one.
 - [ ] BVH(May move)
 - [ ] Point light

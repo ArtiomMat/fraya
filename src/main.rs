@@ -3,7 +3,8 @@ use std::time::Duration;
 use crate::eye_controller::EyeController;
 use crate::math::{Quat, Triangle, Vec3};
 use crate::render::{Eye, RayTracer, eye::EyeSettings};
-use crate::scene::Scene;
+use crate::scene::model::Vertex;
+use crate::scene::{Model, Scene};
 use crate::video::{Image, Surface, WindowSurface, window_surface::event::WindowEvent};
 
 mod bvh;
@@ -17,7 +18,7 @@ mod eye_controller;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut ws = WindowSurface::new([300, 300])?;
     let mut rt = RayTracer::new(
-        Image::new_black([300, 300]),
+        Image::new_black([600, 600]),
         Eye {
             position: Vec3::new(0.0, 0.0, 0.0),
             rotation: Quat::from_euler(glam::EulerRot::XYZ, 0.0, 0.0, 0.0),
@@ -33,6 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         c: Vec3::new(0.7, 0.7, -2.0),
     };
     let mut eye_controller = EyeController::new(0.2);
+
 
     rt.eye_mut().position = Vec3::new(0.0, 0.0, 5.0);
     rt.eye_mut().rotation = Quat::from_euler(glam::EulerRot::ZYX, 0.0, 0.6, 0.0);
