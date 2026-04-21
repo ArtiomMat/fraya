@@ -11,7 +11,7 @@ Development start: 16th of April 2026
     - [x] SDL window surface
     - [x] Render module with high level primitives
     - [x] Möller–Trumbore intersection POC
-- [ ] A camera that can move and look
+- [x] A camera that can move and look
 - [ ] Multi-triangle rendering
     - [ ] For now via iterating one by one
 - [ ] BVH(May move)
