@@ -24,8 +24,8 @@ struct Material {
 pub struct VertexExtra {
     // pub position: Vec3,
     pub normal: Vec3,
-    tangent: Vec3,
-    texture: Vec2,
+    // tangent: Vec3,
+    // texture: Vec2,
 }
 
 pub struct Mesh {
@@ -36,8 +36,12 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    fn resolve_vertex(&self, i: u32) -> &VertexExtra {
-        &self.vertices[i as usize]
+    fn resolve_position(&self, i: u32) -> &Vec3 {
+        &self.positions[i as usize]
+    }
+
+        fn resolve_vertex(&self, i: u32) -> &VertexExtra {
+        &self.extras[i as usize]
     }
 
     // fn resolve_position(&self, i: u32) -> &Vec3 {
@@ -68,12 +72,13 @@ mod test {
         let model = Mesh {
             positions: vec![
                 Vec3::new(1.0, 2.0, 3.0),
+                Vec3::new(4.0, 5.0, 6.0),
+            ],
+            extras: vec![
                 VertexExtra {
-                    position: ,
                     normal: Vec3::new(-1.0, -2.0, -3.0),
                 },
                 VertexExtra {
-                    position: Vec3::new(4.0, 5.0, 6.0),
                     normal: Vec3::new(-4.0, -5.0, -6.0),
                 },
             ],

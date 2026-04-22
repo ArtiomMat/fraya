@@ -27,7 +27,7 @@ impl Bvh {
     
     /// Optimizes the primitives' order for internal access reasons, doesn't 
     /// care what they are only that an `aabb::Bound` can be made.
-    pub fn new<P: aabb::BoxBounded>(primitives: &mut [P]) -> Self {
+    pub fn new<P: aabb::Bounded>(primitives: &mut [P]) -> Self {
         // TODO: Implement the BVH
         Self {
             nodes: Vec::new(),
