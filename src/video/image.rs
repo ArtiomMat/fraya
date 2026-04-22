@@ -1,3 +1,5 @@
+use crate::image::image;
+
 /// This is the one and only language in which fraya speaks: `ABGR8888`.
 /// Chosen due to prevalence.
 #[repr(C)]
@@ -11,21 +13,13 @@ pub struct Pixel {
 
 impl Default for Pixel {
     fn default() -> Self {
-        Self { b: 0, g: 0, r: 0, a: 255 }
-    }
-}
-
-pub struct Image {
-    pub pixels: Vec<Pixel>,
-    pub size: [u32; 2],
-}
-
-impl Image {
-    pub fn new_black(size: [u32; 2]) -> Self {
-        let pixels = vec![Pixel::default(); (size[0] * size[1]) as usize];
         Self {
-            pixels,
-            size
+            b: 0,
+            g: 0,
+            r: 0,
+            a: 255,
         }
     }
 }
+
+pub type Image = image::Image<Pixel>;

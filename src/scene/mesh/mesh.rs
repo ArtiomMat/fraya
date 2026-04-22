@@ -1,6 +1,7 @@
 use std::ops::Index;
 
-use crate::math::{Triangle, Vec2, Vec3};
+use crate::{math::{Triangle, Vec2, Vec3}, scene::SceneIndex};
+use super::TrianglesIter;
 
 /* TODO: Later
 
@@ -19,20 +20,23 @@ struct Material {
 
  */
 
-pub struct Vertex {
-    pub position: Vec3,
+// TODO: Finish doing this one
+pub struct VertexExtra {
+    // pub position: Vec3,
     pub normal: Vec3,
-    // tangent: Vec3,
-    // texture: Vec2,
+    tangent: Vec3,
+    texture: Vec2,
 }
 
-pub struct Model {
-    pub vertices: Vec<Vertex>,
+pub struct Mesh {
+    pub positions: Vec<Vec3>,
+    pub extras: Vec<VertexExtra>,
     pub elements: Vec<[u32; 3]>,
+    pub material: Option<SceneIndex>,
 }
 
-impl Model {
-    fn resolve_vertex(&self, i: u32) -> &Vertex {
+impl Mesh {
+    fn resolve_vertex(&self, i: u32) -> &VertexExtra {
         &self.vertices[i as usize]
     }
 
@@ -40,7 +44,7 @@ impl Model {
     //     &self.resolve_vertex(i).position
     // }
 
-    pub fn triangle(&self, element_index: u32) -> [&Vertex; 3] {
+    pub fn triangle(&self, element_index: u32) -> [&VertexExtra; 3] {
         let element = &self.elements[element_index as usize];
         [
             self.resolve_vertex(element[0]),
@@ -54,34 +58,6 @@ impl Model {
     }
 }
 
-pub struct TrianglesIter<'a> {
-    model: &'a Model,
-    element: u32,
-}
-
-impl TrianglesIter<'_> {
-    fn new(model: &'_ Model) -> TrianglesIter<'_> {
-        TrianglesIter {
-            model: model,
-            element: 0,
-        }
-    }
-}
-
-impl<'a> Iterator for TrianglesIter<'a> {
-    type Item = [&'a Vertex; 3];
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.element as usize >= self.model.elements.len() {
-            None
-        } else {
-            let element = self.element;
-            self.element += 1;
-            Some(self.model.triangle(element))
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -89,18 +65,20 @@ mod test {
     /// Relatively hardcoded sanity check that the triangle iterator works.
     #[test]
     fn sanity_iterator() {
-        let model = Model {
-            vertices: vec![
-                Vertex {
-                    position: Vec3::new(1.0, 2.0, 3.0),
+        let model = Mesh {
+            positions: vec![
+                Vec3::new(1.0, 2.0, 3.0),
+                VertexExtra {
+                    position: ,
                     normal: Vec3::new(-1.0, -2.0, -3.0),
                 },
-                Vertex {
+                VertexExtra {
                     position: Vec3::new(4.0, 5.0, 6.0),
                     normal: Vec3::new(-4.0, -5.0, -6.0),
                 },
             ],
             elements: vec![[0, 1, 0], [1, 1, 0]],
+            material: None,
         };
         for (i, triangle) in model.triangles().enumerate() {
             if i == 0 {

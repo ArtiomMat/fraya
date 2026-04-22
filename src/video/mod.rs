@@ -1,3 +1,5 @@
+//! Low level export/output module.
+
 pub use surface::Surface;
 pub use image::{Pixel, Image};
 

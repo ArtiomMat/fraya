@@ -1,6 +1,6 @@
 use crate::math::{Vec3, Quat};
 
-
+/// Called eye and not camera because I like it better.
 pub struct Eye {
     pub position: Vec3,
     pub rotation: Quat,
