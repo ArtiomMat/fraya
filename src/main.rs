@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 samples_per_pixel: 3,
             },
         },
-        Scene {},
+        Scene::load("x.glb")?,
     );
     let triangle = Triangle {
         a: Vec3::new(-0.7, 0.5, -2.5),

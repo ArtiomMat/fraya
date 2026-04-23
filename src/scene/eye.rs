@@ -1,9 +1,8 @@
-use crate::math::{Vec3, Quat};
+use crate::{math::{Quat, Vec3}, scene::Transform};
 
 /// Called eye and not camera because I like it better.
 pub struct Eye {
-    pub position: Vec3,
-    pub rotation: Quat,
+    pub transform: Transform,
     /// In radians.
     pub field_of_view: f32,
     /// Radius of the lens disc located at camera origin.

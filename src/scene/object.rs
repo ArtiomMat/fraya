@@ -1,12 +1,13 @@
-use crate::scene::SceneIndex;
-use crate::math::{BoundingBox, Mat4, Quat, Vec3};
+use crate::math::{BoundingBox};
+use crate::scene::Transform;
+use crate::scene::mesh::mesh::MeshIndex;
+
+pub type ObjectIndex = u8;
 
 pub struct Object {
-    // position: Vec3,
-    // rotation: Quat,
-    transform: Mat4,
-    mesh: SceneIndex,
+    transform: Transform,
+    mesh: MeshIndex,
     bounds: BoundingBox,
-    parent: Option<SceneIndex>,
-    children: [SceneIndex; 4],
+    parent: Option<ObjectIndex>,
+    children: [ObjectIndex; 4],
 }

@@ -1,4 +1,4 @@
-pub use mesh::{Mesh, VertexExtra};
+pub use mesh::{Mesh};
 pub use triangles_iter::TrianglesIter;
 
 pub mod mesh;

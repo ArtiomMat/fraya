@@ -1,6 +1,6 @@
 use std::ops::Index;
 
-use crate::{math::{Triangle, Vec2, Vec3}, scene::SceneIndex};
+use crate::math::Vec3;
 use super::TrianglesIter;
 
 /* TODO: Later
@@ -20,45 +20,21 @@ struct Material {
 
  */
 
-// TODO: Finish doing this one
-pub struct VertexExtra {
-    // pub position: Vec3,
-    pub normal: Vec3,
-    // tangent: Vec3,
-    // texture: Vec2,
-}
+pub type MeshIndex = u16;
 
 pub struct Mesh {
     pub positions: Vec<Vec3>,
-    pub extras: Vec<VertexExtra>,
-    pub elements: Vec<[u32; 3]>,
-    pub material: Option<SceneIndex>,
+    pub normals: Vec<Vec3>,
+    pub triangles: Vec<[u32; 3]>,
+    // pub material: Option<SceneIndex>,
 }
 
 impl Mesh {
-    fn resolve_position(&self, i: u32) -> &Vec3 {
-        &self.positions[i as usize]
+    pub fn position_triangles(&self) -> TrianglesIter<'_, Vec3> {
+        TrianglesIter::new(self.positions.as_slice(), self.triangles.as_slice())
     }
-
-        fn resolve_vertex(&self, i: u32) -> &VertexExtra {
-        &self.extras[i as usize]
-    }
-
-    // fn resolve_position(&self, i: u32) -> &Vec3 {
-    //     &self.resolve_vertex(i).position
-    // }
-
-    pub fn triangle(&self, element_index: u32) -> [&VertexExtra; 3] {
-        let element = &self.elements[element_index as usize];
-        [
-            self.resolve_vertex(element[0]),
-            self.resolve_vertex(element[1]),
-            self.resolve_vertex(element[2]),
-        ]
-    }
-
-    pub fn triangles(&self) -> TrianglesIter<'_> {
-        TrianglesIter::new(self)
+    pub fn normal_triangles(&self) -> TrianglesIter<'_, Vec3> {
+        TrianglesIter::new(self.normals.as_slice(), self.triangles.as_slice())
     }
 }
 
@@ -68,40 +44,42 @@ mod test {
 
     /// Relatively hardcoded sanity check that the triangle iterator works.
     #[test]
-    fn sanity_iterator() {
+    fn sanity_iterators() {
         let model = Mesh {
             positions: vec![
                 Vec3::new(1.0, 2.0, 3.0),
                 Vec3::new(4.0, 5.0, 6.0),
             ],
-            extras: vec![
-                VertexExtra {
-                    normal: Vec3::new(-1.0, -2.0, -3.0),
-                },
-                VertexExtra {
-                    normal: Vec3::new(-4.0, -5.0, -6.0),
-                },
+            normals: vec![
+                Vec3::new(-1.0, -2.0, -3.0),
+                Vec3::new(-4.0, -5.0, -6.0),
             ],
-            elements: vec![[0, 1, 0], [1, 1, 0]],
-            material: None,
+            triangles: vec![[0, 1, 0], [1, 1, 0]],
         };
-        for (i, triangle) in model.triangles().enumerate() {
+
+        // Make sure that the position triangle iterator gives the right results
+        for (i, triangle) in model.position_triangles().enumerate() {
             if i == 0 {
-                // Makes sure that each vertex in the triangle is the right one
-                assert!(triangle[0].position == Vec3::new(1.0, 2.0, 3.0));
-                assert!(triangle[1].position == Vec3::new(4.0, 5.0, 6.0));
-                assert!(triangle[2].position == Vec3::new(1.0, 2.0, 3.0));
-                assert!(triangle[0].normal == Vec3::new(-1.0, -2.0, -3.0));
-                assert!(triangle[1].normal == Vec3::new(-4.0, -5.0, -6.0));
-                assert!(triangle[2].normal == Vec3::new(-1.0, -2.0, -3.0));
+                assert!(*triangle[0] == Vec3::new(1.0, 2.0, 3.0));
+                assert!(*triangle[1] == Vec3::new(4.0, 5.0, 6.0));
+                assert!(*triangle[2] == Vec3::new(1.0, 2.0, 3.0));
             } else if i == 1 {
-                // Makes sure that each vertex in the triangle is the right one
-                assert!(triangle[0].position == Vec3::new(4.0, 5.0, 6.0));
-                assert!(triangle[1].position == Vec3::new(4.0, 5.0, 6.0));
-                assert!(triangle[2].position == Vec3::new(1.0, 2.0, 3.0));
-                assert!(triangle[0].normal == Vec3::new(-4.0, -5.0, -6.0));
-                assert!(triangle[1].normal == Vec3::new(-4.0, -5.0, -6.0));
-                assert!(triangle[2].normal == Vec3::new(-1.0, -2.0, -3.0));
+                assert!(*triangle[0] == Vec3::new(4.0, 5.0, 6.0));
+                assert!(*triangle[1] == Vec3::new(4.0, 5.0, 6.0));
+                assert!(*triangle[2] == Vec3::new(1.0, 2.0, 3.0));
+            }
+        }
+
+        // Make sure that the normal triangle iterator gives the right results
+        for (i, triangle) in model.normal_triangles().enumerate() {
+            if i == 0 {
+                assert!(*triangle[0] == Vec3::new(-1.0, -2.0, -3.0));
+                assert!(*triangle[1] == Vec3::new(-4.0, -5.0, -6.0));
+                assert!(*triangle[2] == Vec3::new(-1.0, -2.0, -3.0));
+            } else if i == 1 {
+                assert!(*triangle[0] == Vec3::new(-4.0, -5.0, -6.0));
+                assert!(*triangle[1] == Vec3::new(-4.0, -5.0, -6.0));
+                assert!(*triangle[2] == Vec3::new(-1.0, -2.0, -3.0));
             }
         }
     }

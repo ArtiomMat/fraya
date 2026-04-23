@@ -1,29 +1,44 @@
-use super::{Mesh, VertexExtra};
-
-pub struct TrianglesIter<'a> {
-    model: &'a Mesh,
-    element: u32,
+/// Takes a slice of 3-index elements representing triangles and a slice of
+/// indexed data, and then can iterate and return a triangle of that data.
+pub struct TrianglesIter<'a, T> {
+    slice: &'a [T],
+    triangles: &'a [[u32; 3]],
+    current_element: u32,
 }
 
-impl TrianglesIter<'_> {
-    pub(super) fn new(model: &'_ Mesh) -> TrianglesIter<'_> {
+impl<'a, T> TrianglesIter<'a, T> {
+    pub(super) fn new(slice: &'a [T], triangles: &'a [[u32; 3]]) -> TrianglesIter<'a, T> {
         TrianglesIter {
-            model: model,
-            element: 0,
+            slice,
+            triangles,
+            current_element: 0,
         }
+    }
+
+    fn resolve_index(slice: &'a [T], i: u32) -> &'a T {
+        &slice[i as usize]
+    }
+
+    fn resolve_triangle(slice: &'a [T], triangles: &'a [[u32; 3]], triangle_index: u32) -> [&'a T; 3] {
+        let element = &triangles[triangle_index as usize];
+        [
+            Self::resolve_index(slice, element[0]),
+            Self::resolve_index(slice, element[1]),
+            Self::resolve_index(slice, element[2]),
+        ]
     }
 }
 
-impl<'a> Iterator for TrianglesIter<'a> {
-    type Item = [&'a VertexExtra; 3];
+impl<'a, T> Iterator for TrianglesIter<'a, T> {
+    type Item = [&'a T; 3];
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.element as usize >= self.model.elements.len() {
+        if self.current_element as usize >= self.triangles.len() {
             None
         } else {
-            let element = self.element;
-            self.element += 1;
-            Some(self.model.triangle(element))
+            let triangle = self.current_element;
+            self.current_element += 1;
+            Some(Self::resolve_triangle(self.slice, self.triangles, triangle))
         }
     }
 }
