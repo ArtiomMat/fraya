@@ -32,65 +32,72 @@ pub struct Scene {
 }
 
 impl Scene {
-    pub fn load(path: &str) -> Result<Scene, Error> {
-        let mut gltf = Gltf::open(path)?;
-        let gltf_scene = gltf.default_scene().ok_or(Error::InvalidFormat("No scene".into()))?;
-
-        'loading_mesh: for mesh in gltf.meshes() {
-            let name = mesh.name().unwrap_or("UNNAMED");
-            let mut bounding_box = BoundingBox {
-                min: Vec3::ZERO,
-                max: Vec3::ZERO,
-            }; // TODO: min-max the primitives
-
-            let mut positions = Vec::<Vec3>::new();
-            let mut normals = Vec::<Vec3>::new();
-            let mut triangles = Vec::<[u32; 3]>::new();
-
-            log::info!("Loading mesh '{}' and its primitives...", name);
-            for primitive in mesh.primitives() {
-                if primitive.mode() != gltf::mesh::Mode::Triangles {
-                    log::warn!(
-                        "Mesh '{}' primitive uses non-triangle mode {}, skipping...",
-                        name,
-                        primitive.mode().as_gl_enum()
-                    );
-                    break 'loading_mesh;
-                }
-
-                // TODO: Inconsistent because we usually should just skip
-                let indices = primitive.indices().ok_or(Error::InvalidFormat("No indices".into()))?;
-                if indices.dimensions() != Dimensions::Scalar {
-                    log::warn!(
-                        "Mesh '{}' primitive uses non-scalar indices {}, skipping...",
-                        name,
-                        indices.dimensions().multiplicity()
-                    );
-                    break 'loading_mesh;
-                }
-                if indices.data_type() == DataType::F32 {
-                    log::warn!(
-                        "Mesh '{}' primitive uses non-integer data type {}, skipping...",
-                        name,
-                        primitive.mode().as_gl_enum()
-                    );
-                    break 'loading_mesh;
-                }
-
-                // for index in indices. {
-                    
-                // }
-
-                // for attribute in primitive.attributes() {
-                //     attribute
-                // }
-            }
-        }
-
-        for node in gltf_scene.nodes() {
-            let x = node.transform().matrix();
+    pub fn new() -> Scene {
+        Scene {
+            eyes: Vec::new(),
+            meshes: Vec::new(),
+            objects: Vec::new(),
         }
     }
 
-    pub fn new() {}
+    pub fn load(path: &str) -> Result<Scene, Error> {
+        let mut gltf = Gltf::open(path)?;
+        Err(Error::InvalidFormat("LOL".into()))
+        // let gltf_scene = gltf.default_scene().ok_or(Error::InvalidFormat("No scene".into()))?;
+
+        // 'loading_mesh: for mesh in gltf.meshes() {
+        //     let name = mesh.name().unwrap_or("UNNAMED");
+        //     let mut bounding_box = BoundingBox {
+        //         min: Vec3::ZERO,
+        //         max: Vec3::ZERO,
+        //     }; // TODO: min-max the primitives
+
+        //     let mut positions = Vec::<Vec3>::new();
+        //     let mut normals = Vec::<Vec3>::new();
+        //     let mut triangles = Vec::<[u32; 3]>::new();
+
+        //     log::info!("Loading mesh '{}' and its primitives...", name);
+        //     for primitive in mesh.primitives() {
+        //         if primitive.mode() != gltf::mesh::Mode::Triangles {
+        //             log::warn!(
+        //                 "Mesh '{}' primitive uses non-triangle mode {}, skipping...",
+        //                 name,
+        //                 primitive.mode().as_gl_enum()
+        //             );
+        //             break 'loading_mesh;
+        //         }
+
+        //         // TODO: Inconsistent because we usually should just skip
+        //         let indices = primitive.indices().ok_or(Error::InvalidFormat("No indices".into()))?;
+        //         if indices.dimensions() != Dimensions::Scalar {
+        //             log::warn!(
+        //                 "Mesh '{}' primitive uses non-scalar indices {}, skipping...",
+        //                 name,
+        //                 indices.dimensions().multiplicity()
+        //             );
+        //             break 'loading_mesh;
+        //         }
+        //         if indices.data_type() == DataType::F32 {
+        //             log::warn!(
+        //                 "Mesh '{}' primitive uses non-integer data type {}, skipping...",
+        //                 name,
+        //                 primitive.mode().as_gl_enum()
+        //             );
+        //             break 'loading_mesh;
+        //         }
+
+        //         // for index in indices. {
+                    
+        //         // }
+
+        //         // for attribute in primitive.attributes() {
+        //         //     attribute
+        //         // }
+        //     }
+        // }
+
+        // for node in gltf_scene.nodes() {
+        //     let x = node.transform().matrix();
+        // }
+    }
 }

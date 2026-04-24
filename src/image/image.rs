@@ -17,11 +17,11 @@ where
 
 impl<P> Image<P>
 where
-    P: Default,
+    P: Default + Clone,
 {
     pub fn new(size: [u32; 2]) -> Self {
         Self {
-            pixels: Default::default(),
+            pixels: vec![P::default(); (size[0] * size[1]) as usize],
             size,
         }
     }

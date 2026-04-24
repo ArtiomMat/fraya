@@ -3,7 +3,6 @@ use std::time::Duration;
 use crate::eye_controller::EyeController;
 use crate::math::{Quat, Triangle, Vec3};
 use crate::render::{Eye, RayTracer, eye::EyeSettings};
-use crate::scene::mesh::VertexExtra;
 use crate::scene::{Mesh, Scene};
 use crate::video::Pixel;
 use crate::video::{Image, Surface, WindowSurface, window_surface::event::WindowEvent};
@@ -30,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 samples_per_pixel: 3,
             },
         },
-        Scene::load("x.glb")?,
+        Scene::new(),
     );
     let triangle = Triangle {
         a: Vec3::new(-0.7, 0.5, -2.5),
