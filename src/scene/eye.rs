@@ -1,5 +1,7 @@
 use crate::{math::{Quat, Vec3}, scene::Transform};
 
+pub type EyeIndex = u8;
+
 /// Called eye and not camera because I like it better.
 pub struct Eye {
     pub transform: Transform,

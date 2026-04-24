@@ -8,11 +8,14 @@
 
 pub use builder::Builder;
 pub use error::Error;
-pub use eye::Eye;
-use gltf::{Gltf, accessor::{DataType, Dimensions}};
+pub use eye::{Eye, EyeIndex};
+use gltf::{
+    Glb, Gltf,
+    accessor::{DataType, Dimensions},
+};
 pub use images::*;
-pub use mesh::{Mesh, TrianglesIter};
-pub use object::Object;
+pub use mesh::{Mesh, MeshIndex, TrianglesIter};
+pub use object::{Object, ObjectIndex};
 pub use transform::Transform;
 
 use crate::math::{BoundingBox, Vec3};
@@ -21,11 +24,13 @@ pub mod builder;
 pub mod error;
 pub mod eye;
 pub mod images;
-pub mod transform;
 pub mod mesh;
 pub mod object;
+pub mod transform;
 
 pub struct Scene {
+    root_objects: Vec<ObjectIndex>,
+    default_eye: Option<EyeIndex>,
     eyes: Vec<Eye>,
     meshes: Vec<Mesh>,
     objects: Vec<Object>,
@@ -34,70 +39,154 @@ pub struct Scene {
 impl Scene {
     pub fn new() -> Scene {
         Scene {
+            default_eye: None,
+            root_objects: Vec::new(),
             eyes: Vec::new(),
             meshes: Vec::new(),
             objects: Vec::new(),
         }
     }
 
+    pub fn push_mesh(&mut self, mesh: Mesh) {
+        self.meshes.push(mesh);
+    }
+
+    pub fn push_eye(&mut self, eye: Eye) {
+        self.eyes.push(eye);
+
+        if let None = self.default_eye {
+            self.default_eye = Some(self.eyes.len() as u8);
+        }
+    }
+
+    fn validate_primitive(mesh_name: &str, primitive: &gltf::Primitive) -> bool {
+        if primitive.mode() != gltf::mesh::Mode::Triangles {
+            log::warn!(
+                "Mesh '{}' primitive uses non-triangle mode {}, skipping...",
+                mesh_name,
+                primitive.mode().as_gl_enum()
+            );
+            return false;
+        }
+
+        let Some(indices) = primitive.indices() else {
+            log::warn!(
+                "Mesh '{}' primitive {} has no indices, skipping...",
+                mesh_name,
+                primitive.index()
+            );
+            return false;
+        };
+
+        if indices.dimensions() != Dimensions::Scalar {
+            log::warn!(
+                "Mesh '{}' primitive {} uses non-scalar indices {}, skipping...",
+                mesh_name,
+                primitive.index(),
+                indices.dimensions().multiplicity()
+            );
+            return false;
+        }
+        if indices.data_type() == DataType::F32 {
+            log::warn!(
+                "Mesh '{}' primitive {} uses non-integer data type {}, skipping...",
+                mesh_name,
+                primitive.index(),
+                primitive.mode().as_gl_enum()
+            );
+            return false;
+        }
+        if let None = indices.view() {
+            log::warn!(
+                "Mesh '{}' primitive {} has no view for indices, skipping...",
+                mesh_name,
+                primitive.index()
+            );
+            return false;
+        };
+
+        true
+    }
+
     pub fn load(path: &str) -> Result<Scene, Error> {
-        let mut gltf = Gltf::open(path)?;
+        let (document, buffers, images) = gltf::import(path)?;
+
+        let gltf_scene = document
+            .default_scene()
+            .ok_or(Error::NoScene)?;
+
+        let mut scene = Scene::new();
+
+        for mesh in document.meshes() {
+            let mesh_name = mesh.name().unwrap_or("UNNAMED");
+
+            let mut positions = Vec::<Vec3>::new();
+            let mut normals = Vec::<Vec3>::new();
+            let mut triangles = Vec::<[u32; 3]>::new();
+
+            log::info!("Loading mesh '{}'...", mesh_name);
+            for primitive in mesh.primitives() {
+                if !Self::validate_primitive(mesh_name, &primitive) {
+                    continue;
+                }
+
+                let reader = primitive.reader(|buf| Some(&buffers[buf.index()]));
+
+                let Some(gltf_indices) = reader.read_indices() else {
+                    log::warn!(
+                        "Mesh '{}' primitive {} has no indices, skipping...",
+                        mesh_name,
+                        primitive.index()
+                    );
+                    continue;
+                };
+
+                let Some(gltf_positions) = reader.read_positions() else {
+                    log::warn!(
+                        "Mesh '{}' primitive {} has no positions, skipping...",
+                        mesh_name,
+                        primitive.index()
+                    );
+                    continue;
+                };
+
+                let Some(gltf_normals) = reader.read_normals() else {
+                    // TODO: Make it non-mandatory
+                    log::warn!(
+                        "Mesh '{}' primitive {} has no normals, skipping...",
+                        mesh_name,
+                        primitive.index()
+                    );
+                    continue;
+                };
+
+                // Setup triangles
+                for (i, vertex) in gltf_indices.into_u32().enumerate() {
+                    if 0 == i % 3 {
+                        // Starting a new triangle in `triangles`
+                        triangles.push([vertex, 0, 0]);
+                    } else {
+                        // Append the rest of the components to the triangle
+                        triangles[i / 3][i % 3] = vertex;
+                    }
+                }
+                // Setup positions
+                for position in gltf_positions {
+                    positions.push(position.into());
+                }
+                // Setup normals
+                for normal in gltf_normals {
+                    normals.push(normal.into());
+                }
+            }
+
+            scene.push_mesh(Mesh {
+                positions,
+                normals,
+                triangles,
+            });
+        }
+
         Err(Error::InvalidFormat("LOL".into()))
-        // let gltf_scene = gltf.default_scene().ok_or(Error::InvalidFormat("No scene".into()))?;
-
-        // 'loading_mesh: for mesh in gltf.meshes() {
-        //     let name = mesh.name().unwrap_or("UNNAMED");
-        //     let mut bounding_box = BoundingBox {
-        //         min: Vec3::ZERO,
-        //         max: Vec3::ZERO,
-        //     }; // TODO: min-max the primitives
-
-        //     let mut positions = Vec::<Vec3>::new();
-        //     let mut normals = Vec::<Vec3>::new();
-        //     let mut triangles = Vec::<[u32; 3]>::new();
-
-        //     log::info!("Loading mesh '{}' and its primitives...", name);
-        //     for primitive in mesh.primitives() {
-        //         if primitive.mode() != gltf::mesh::Mode::Triangles {
-        //             log::warn!(
-        //                 "Mesh '{}' primitive uses non-triangle mode {}, skipping...",
-        //                 name,
-        //                 primitive.mode().as_gl_enum()
-        //             );
-        //             break 'loading_mesh;
-        //         }
-
-        //         // TODO: Inconsistent because we usually should just skip
-        //         let indices = primitive.indices().ok_or(Error::InvalidFormat("No indices".into()))?;
-        //         if indices.dimensions() != Dimensions::Scalar {
-        //             log::warn!(
-        //                 "Mesh '{}' primitive uses non-scalar indices {}, skipping...",
-        //                 name,
-        //                 indices.dimensions().multiplicity()
-        //             );
-        //             break 'loading_mesh;
-        //         }
-        //         if indices.data_type() == DataType::F32 {
-        //             log::warn!(
-        //                 "Mesh '{}' primitive uses non-integer data type {}, skipping...",
-        //                 name,
-        //                 primitive.mode().as_gl_enum()
-        //             );
-        //             break 'loading_mesh;
-        //         }
-
-        //         // for index in indices. {
-                    
-        //         // }
-
-        //         // for attribute in primitive.attributes() {
-        //         //     attribute
-        //         // }
-        //     }
-        // }
-
-        // for node in gltf_scene.nodes() {
-        //     let x = node.transform().matrix();
-        // }
     }
 }

@@ -2,7 +2,8 @@
 pub enum Error {
     Gltf(gltf::Error),
     InvalidFormat(String),
-    // NoTriangles,
+    NoTriangles,
+    NoScene,
 }
 
 impl From<gltf::Error> for Error {
