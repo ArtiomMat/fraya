@@ -4,6 +4,12 @@ An OK software PBR ray-tracer.
 
 Development start: 16th of April 2026
 
+# Current state
+
+Renders an ico-sphere.
+
+![Demo](screenshots/sphere-2026-04-24_18.57.56.gif)
+
 # TODO
 
 - [x] Trace a single triangle
@@ -12,10 +18,11 @@ Development start: 16th of April 2026
     - [x] Render module with high level primitives
     - [x] Möller–Trumbore intersection POC
 - [x] A camera that can move and look
-- [ ] Multi-triangle rendering
+- [x] Multi-triangle rendering
     - [x] The concept of a `Mesh`.
-    - [ ] Finding a way to 
-    - [ ] Rendering a `Mesh`.
-    - [ ] For now via iterating one by one.
+    - [x] Finding a way to 
+    - [x] Rendering a `Mesh`.
+    - [x] For now via iterating one by one.
+- [ ] 
 - [ ] BVH(May move)
 - [ ] Point light
