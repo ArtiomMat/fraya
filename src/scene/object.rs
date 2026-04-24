@@ -5,9 +5,9 @@ use crate::scene::mesh::mesh::MeshIndex;
 pub type ObjectIndex = u8;
 
 pub struct Object {
-    transform: Transform,
-    mesh: MeshIndex,
-    bounds: BoundingBox,
-    parent: Option<ObjectIndex>,
-    children: [ObjectIndex; 4],
+    pub(super) transform: Transform,
+    pub(super) mesh: MeshIndex,
+    pub(super) bounds: BoundingBox,
+    pub(super) parent: Option<ObjectIndex>,
+    pub(super) children: [ObjectIndex; 4],
 }

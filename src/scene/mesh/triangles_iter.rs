@@ -6,7 +6,7 @@ pub struct TrianglesIter<'a, T> {
     current_element: u32,
 }
 
-impl<'a, T> TrianglesIter<'a, T> {
+impl<'a, T> TrianglesIter<'a, T> where T: Clone + Copy {
     pub(super) fn new(slice: &'a [T], triangles: &'a [[u32; 3]]) -> TrianglesIter<'a, T> {
         TrianglesIter {
             slice,
@@ -19,18 +19,18 @@ impl<'a, T> TrianglesIter<'a, T> {
         &slice[i as usize]
     }
 
-    fn resolve_triangle(slice: &'a [T], triangles: &'a [[u32; 3]], triangle_index: u32) -> [&'a T; 3] {
+    fn resolve_triangle(slice: &'a [T], triangles: &'a [[u32; 3]], triangle_index: u32) -> [T; 3] {
         let element = &triangles[triangle_index as usize];
         [
-            Self::resolve_index(slice, element[0]),
-            Self::resolve_index(slice, element[1]),
-            Self::resolve_index(slice, element[2]),
+            *Self::resolve_index(slice, element[0]),
+            *Self::resolve_index(slice, element[1]),
+            *Self::resolve_index(slice, element[2]),
         ]
     }
 }
 
-impl<'a, T> Iterator for TrianglesIter<'a, T> {
-    type Item = [&'a T; 3];
+impl<'a, T> Iterator for TrianglesIter<'a, T> where T: Clone + Copy {
+    type Item = [T; 3];
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_element as usize >= self.triangles.len() {

@@ -2,7 +2,6 @@
 pub enum Error {
     Gltf(gltf::Error),
     InvalidFormat(String),
-    NoTriangles,
     NoScene,
 }
 
@@ -17,6 +16,7 @@ impl std::fmt::Display for Error {
         match self {
             Error::Gltf(gltf) => write!(f, "{}", gltf),
             Error::InvalidFormat(s) => write!(f, "Invalid format ({})", s),
+            Error::NoScene => write!(f, "No default scene"), 
         }
     }
 }

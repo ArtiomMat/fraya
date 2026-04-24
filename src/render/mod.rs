@@ -6,6 +6,19 @@ use crate::math::{vec3, Ray, Triangle, Vec3, EPSILON};
 use crate::scene::Scene;
 use crate::video::{Image, Pixel, Surface};
 
+const TRIANGLE_COLORS: [Pixel; 10] = [
+    Pixel { b: 214, g:  47, r: 189, a: 255 }, // triangle 0
+    Pixel { b:  91, g: 203, r:  38, a: 255 }, // triangle 1
+    Pixel { b: 172, g:  15, r: 240, a: 255 }, // triangle 2
+    Pixel { b:  33, g: 118, r:  77, a: 255 }, // triangle 3
+    Pixel { b: 255, g:  82, r: 144, a: 255 }, // triangle 4
+    Pixel { b:   7, g: 231, r:  60, a: 255 }, // triangle 5
+    Pixel { b: 130, g: 199, r: 210, a: 255 }, // triangle 6
+    Pixel { b:  64, g:  44, r: 101, a: 255 }, // triangle 7
+    Pixel { b: 188, g: 156, r:  19, a: 255 }, // triangle 8
+    Pixel { b:  22, g:  73, r: 233, a: 255 }, // triangle 9
+];
+
 /// Takes ownership of the scene, settings, surface and specializes
 /// itself to that particular configuration of objects passed.
 pub struct RayTracer {
@@ -28,12 +41,12 @@ impl RayTracer {
 
     /// If there is an intersection with the triangle, returns the exact point
     /// it was on.
-    pub fn calculate_ray_triangle_intersection(ray: &Ray, triangle: &Triangle) -> Option<Vec3> {
+    pub fn calculate_ray_triangle_intersection(ray: &Ray, triangle: &[Vec3; 3]) -> Option<Vec3> {
         // Möller–Trumbore algorithm
         //TODO Return RayHit{t,u,v,w} instead later.
 
-        let e1 = triangle.b - triangle.a;
-        let e2 = triangle.c - triangle.a;
+        let e1 = triangle[1] - triangle[0];
+        let e2 = triangle[2] - triangle[0];
 
         // Backface culling, for now CCW hardcoded
         let normal = e1.cross(e2);
@@ -50,7 +63,7 @@ impl RayTracer {
 
         // Triangle intersection with barycentric-coordinates
         let idet = 1.0 / det;
-        let s = ray.origin - triangle.a; // To derive u and v
+        let s = ray.origin - triangle[0]; // To derive u and v
 
         let u = idet * s.dot(ray_cross_e2);
         if u < -EPSILON || u - 1.0 > EPSILON {
@@ -85,10 +98,7 @@ impl RayTracer {
         &mut self.eye
     }
 
-    // TODO: Hardcoded and not intended to exist in future
-    // TODO: Return a sort of "Report" struct that reports how many samples
-    //       were made this iteration and stuff. But OFC that's for later...
-    pub fn render_single_triangle(&mut self, triangle: &Triangle) {
+    pub fn render_scene(&mut self, scene: &Scene) {
         // TODO: Figure out how to give freedom of changing FOV
         
         // Fill with black.
@@ -96,10 +106,56 @@ impl RayTracer {
 
         // Shooting each ray towards the unit screen
         for x in 0..self.image.size[0] {
+            // TODO: Signs on x and y are hardcoded, but depend on image pixel order.
             for y in 0..self.image.size[1] {
                 let direction = Vec3::new(
-                    2.0 * (x as f32 / self.image.size[0] as f32 - 0.5) * self.aspect_ratio,
-                    2.0 * (y as f32 / self.image.size[1] as f32 - 0.5),
+                    vec3::RIGHT.x * 2.0 * (x as f32 / self.image.size[0] as f32 - 0.5) * self.aspect_ratio,
+                    -vec3::UP.y * 2.0 * (y as f32 / self.image.size[1] as f32 - 0.5),
+                    vec3::FORWARD.z,
+                )
+                .normalize();
+
+                let ray = Ray {
+                    origin: self.eye.position,
+                    direction: self.eye.rotation * direction,
+                };
+
+                'triangle_search: for mesh in scene.meshes() {
+                    for (i, position_triangle) in mesh.position_triangles().enumerate() {
+                        // TODO: Hardcoded
+                        // Ray hit
+                        if let Some(ray_hit) = Self::calculate_ray_triangle_intersection(&ray, &position_triangle) {
+                            let factor = ((4.0 - (ray.origin - ray_hit).length()) / 4.0).clamp(0.0, 1.0);
+                            self.image.pixels[(x + y * self.image.size[0]) as usize] = Pixel {
+                                b: (TRIANGLE_COLORS[i % 10].b as f32 * factor) as u8,
+                                g: (TRIANGLE_COLORS[i % 10].g as f32 * factor) as u8,
+                                r: (TRIANGLE_COLORS[i % 10].r as f32 * factor) as u8,
+                                a: 255,
+                            };
+                            break 'triangle_search;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // TODO: Hardcoded and not intended to exist in future
+    // TODO: Return a sort of "Report" struct that reports how many samples
+    //       were made this iteration and stuff. But OFC that's for later...
+    pub fn render_single_triangle(&mut self, triangle: &[Vec3; 3]) {
+        // TODO: Figure out how to give freedom of changing FOV
+        
+        // Fill with black.
+        self.image.pixels.fill(Pixel::default());
+
+        // Shooting each ray towards the unit screen
+        for x in 0..self.image.size[0] {
+            // TODO: Signs on x and y are hardcoded, but depend on image pixel order.
+            for y in 0..self.image.size[1] {
+                let direction = Vec3::new(
+                    vec3::RIGHT.x * 2.0 * (x as f32 / self.image.size[0] as f32 - 0.5) * self.aspect_ratio,
+                    -vec3::UP.y * 2.0 * (y as f32 / self.image.size[1] as f32 - 0.5),
                     vec3::FORWARD.z,
                 )
                 .normalize();

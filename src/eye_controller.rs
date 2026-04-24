@@ -66,8 +66,8 @@ impl EyeController {
 
     pub fn process_mouse_delta(&mut self, dx: f32, dy: f32) {
         if self.is_looking {
-            self.look_x = 0.05 * dy;
-            self.look_y = -0.05 * dx;
+            self.look_x = -1.0 * vec3::UP.y * 0.05 * dy;
+            self.look_y = -1.0 * vec3::RIGHT.x * 0.05 * dx;
         }
     }
 

@@ -9,16 +9,11 @@
 pub use builder::Builder;
 pub use error::Error;
 pub use eye::{Eye, EyeIndex};
-use gltf::{
-    Glb, Gltf,
-    accessor::{DataType, Dimensions},
-};
-pub use images::*;
 pub use mesh::{Mesh, MeshIndex, TrianglesIter};
 pub use object::{Object, ObjectIndex};
 pub use transform::Transform;
 
-use crate::math::{BoundingBox, Vec3};
+use crate::math::{BoundingBox, Quat, Vec3};
 
 pub mod builder;
 pub mod error;
@@ -59,66 +54,20 @@ impl Scene {
         }
     }
 
-    fn validate_primitive(mesh_name: &str, primitive: &gltf::Primitive) -> bool {
-        if primitive.mode() != gltf::mesh::Mode::Triangles {
-            log::warn!(
-                "Mesh '{}' primitive uses non-triangle mode {}, skipping...",
-                mesh_name,
-                primitive.mode().as_gl_enum()
-            );
-            return false;
-        }
-
-        let Some(indices) = primitive.indices() else {
-            log::warn!(
-                "Mesh '{}' primitive {} has no indices, skipping...",
-                mesh_name,
-                primitive.index()
-            );
-            return false;
-        };
-
-        if indices.dimensions() != Dimensions::Scalar {
-            log::warn!(
-                "Mesh '{}' primitive {} uses non-scalar indices {}, skipping...",
-                mesh_name,
-                primitive.index(),
-                indices.dimensions().multiplicity()
-            );
-            return false;
-        }
-        if indices.data_type() == DataType::F32 {
-            log::warn!(
-                "Mesh '{}' primitive {} uses non-integer data type {}, skipping...",
-                mesh_name,
-                primitive.index(),
-                primitive.mode().as_gl_enum()
-            );
-            return false;
-        }
-        if let None = indices.view() {
-            log::warn!(
-                "Mesh '{}' primitive {} has no view for indices, skipping...",
-                mesh_name,
-                primitive.index()
-            );
-            return false;
-        };
-
-        true
+    pub fn meshes(&self) -> &[Mesh] {
+        &self.meshes
     }
 
-    pub fn load(path: &str) -> Result<Scene, Error> {
-        let (document, buffers, images) = gltf::import(path)?;
-
-        let gltf_scene = document
-            .default_scene()
-            .ok_or(Error::NoScene)?;
-
-        let mut scene = Scene::new();
-
+    /// Loads mesh data from the holy trinity into document
+    pub fn load_meshes(
+        scene: &mut Scene,
+        document: &gltf::Document,
+        buffers: &Vec<gltf::buffer::Data>,
+        images: &Vec<gltf::image::Data>,
+    ) -> Result<(), Error> {
         for mesh in document.meshes() {
-            let mesh_name = mesh.name().unwrap_or("UNNAMED");
+            let mesh_name_string = mesh.index().to_string();
+            let mesh_name = mesh.name().unwrap_or(mesh_name_string.as_str());
 
             let mut positions = Vec::<Vec3>::new();
             let mut normals = Vec::<Vec3>::new();
@@ -126,10 +75,6 @@ impl Scene {
 
             log::info!("Loading mesh '{}'...", mesh_name);
             for primitive in mesh.primitives() {
-                if !Self::validate_primitive(mesh_name, &primitive) {
-                    continue;
-                }
-
                 let reader = primitive.reader(|buf| Some(&buffers[buf.index()]));
 
                 let Some(gltf_indices) = reader.read_indices() else {
@@ -187,6 +132,142 @@ impl Scene {
             });
         }
 
-        Err(Error::InvalidFormat("LOL".into()))
+        Ok(())
+    }
+
+    pub fn load_objects(
+        scene: &mut Scene,
+        document: &gltf::Document,
+        buffers: &Vec<gltf::buffer::Data>,
+        images: &Vec<gltf::image::Data>,
+    ) -> Result<(), Error> {
+        for node in document.nodes() {
+            let node_name_string = node.index().to_string();
+            let node_name = node.name().unwrap_or(node_name_string.as_str());
+
+            let Some(mesh) = node.mesh() else {
+                log::warn!("Node '{}' has no normals, skipping...", node_name);
+                continue;
+            };
+
+            let (node_position, node_rotation, _) = node.transform().decomposed();
+            scene.objects.push(Object {
+                transform: Transform {
+                    position: node_position.into(),
+                    rotation: Quat::from_array(node_rotation),
+                },
+                mesh: mesh.index() as MeshIndex,
+                bounds: BoundingBox {
+                    min: Vec3::new(0.0, 0.0, 0.0),
+                    max: Vec3::new(0.0, 0.0, 0.0),
+                },
+                children: Default::default(),
+                parent: None,
+            });
+        }
+
+        Ok(())
+    }
+
+    pub fn load(path: &str) -> Result<Scene, Error> {
+        let (document, buffers, images) = gltf::import(path)?;
+
+        let gltf_scene = document.default_scene().ok_or(Error::NoScene)?;
+
+        let mut scene = Scene::new();
+
+        Self::load_meshes(&mut scene, &document, &buffers, &images)?;
+
+        Ok(scene)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::math::Vec3;
+
+    #[test]
+    fn mesh_load() {
+        let scene = Scene::load("tests/data/Box.glb").expect("Box.glb is necessary");
+        let b = &scene.meshes[0];
+
+        assert_eq!(
+            b.triangles,
+            [
+                [0, 1, 2],
+                [3, 2, 1],
+                [4, 5, 6],
+                [7, 6, 5],
+                [8, 9, 10],
+                [11, 10, 9],
+                [12, 13, 14],
+                [15, 14, 13],
+                [16, 17, 18],
+                [19, 18, 17],
+                [20, 21, 22],
+                [23, 22, 21]
+            ]
+        );
+
+        assert_eq!(
+            b.positions,
+            [
+                Vec3::new(-0.5, -0.5, 0.5),
+                Vec3::new(0.5, -0.5, 0.5),
+                Vec3::new(-0.5, 0.5, 0.5),
+                Vec3::new(0.5, 0.5, 0.5),
+                Vec3::new(0.5, -0.5, 0.5),
+                Vec3::new(-0.5, -0.5, 0.5),
+                Vec3::new(0.5, -0.5, -0.5),
+                Vec3::new(-0.5, -0.5, -0.5),
+                Vec3::new(0.5, 0.5, 0.5),
+                Vec3::new(0.5, -0.5, 0.5),
+                Vec3::new(0.5, 0.5, -0.5),
+                Vec3::new(0.5, -0.5, -0.5),
+                Vec3::new(-0.5, 0.5, 0.5),
+                Vec3::new(0.5, 0.5, 0.5),
+                Vec3::new(-0.5, 0.5, -0.5),
+                Vec3::new(0.5, 0.5, -0.5),
+                Vec3::new(-0.5, -0.5, 0.5),
+                Vec3::new(-0.5, 0.5, 0.5),
+                Vec3::new(-0.5, -0.5, -0.5),
+                Vec3::new(-0.5, 0.5, -0.5),
+                Vec3::new(-0.5, -0.5, -0.5),
+                Vec3::new(-0.5, 0.5, -0.5),
+                Vec3::new(0.5, -0.5, -0.5),
+                Vec3::new(0.5, 0.5, -0.5)
+            ]
+        );
+
+        assert_eq!(
+            b.normals,
+            [
+                Vec3::new(0.0, 0.0, 1.0),
+                Vec3::new(0.0, 0.0, 1.0),
+                Vec3::new(0.0, 0.0, 1.0),
+                Vec3::new(0.0, 0.0, 1.0),
+                Vec3::new(0.0, -1.0, 0.0),
+                Vec3::new(0.0, -1.0, 0.0),
+                Vec3::new(0.0, -1.0, 0.0),
+                Vec3::new(0.0, -1.0, 0.0),
+                Vec3::new(1.0, 0.0, 0.0),
+                Vec3::new(1.0, 0.0, 0.0),
+                Vec3::new(1.0, 0.0, 0.0),
+                Vec3::new(1.0, 0.0, 0.0),
+                Vec3::new(0.0, 1.0, 0.0),
+                Vec3::new(0.0, 1.0, 0.0),
+                Vec3::new(0.0, 1.0, 0.0),
+                Vec3::new(0.0, 1.0, 0.0),
+                Vec3::new(-1.0, 0.0, 0.0),
+                Vec3::new(-1.0, 0.0, 0.0),
+                Vec3::new(-1.0, 0.0, 0.0),
+                Vec3::new(-1.0, 0.0, 0.0),
+                Vec3::new(0.0, 0.0, -1.0),
+                Vec3::new(0.0, 0.0, -1.0),
+                Vec3::new(0.0, 0.0, -1.0),
+                Vec3::new(0.0, 0.0, -1.0)
+            ]
+        )
     }
 }

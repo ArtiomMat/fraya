@@ -18,10 +18,13 @@ mod eye_controller;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
+    fastrand::seed(0);
 
+    let scene = Scene::load("tests/data/Sphere.glb")?;
+    
     let mut ws = WindowSurface::new([300, 300])?;
     let mut rt = RayTracer::new(
-        Image::new([600, 600]),
+        Image::new([300, 300]),
         Eye {
             position: Vec3::new(0.0, 0.0, 0.0),
             rotation: Quat::from_euler(glam::EulerRot::XYZ, 0.0, 0.0, 0.0),
@@ -29,17 +32,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 samples_per_pixel: 3,
             },
         },
-        Scene::new(),
+        Scene::load("tests/data/Sphere.glb")?,
     );
-    let triangle = Triangle {
-        a: Vec3::new(-0.7, 0.5, -2.5),
-        b: Vec3::new(-0.7, 0.0, -4.0),
-        c: Vec3::new(0.7, 0.7, -2.0),
-    };
+    let triangle = [
+        Vec3::new(-0.7, 0.5, -2.5),
+        Vec3::new(-0.7, 0.0, -4.0),
+        Vec3::new(0.7, 0.7, -2.0),
+    ];
     let mut eye_controller = EyeController::new(0.2);
 
     rt.eye_mut().position = Vec3::new(0.0, 0.0, 5.0);
-    rt.eye_mut().rotation = Quat::from_euler(glam::EulerRot::ZYX, 0.0, 0.6, 0.0);
+    rt.eye_mut().rotation = Quat::from_euler(glam::EulerRot::ZYX, 0.0, 0.0, 0.0);
 
     'running: loop {
         for event in ws.event_iter() {
@@ -56,7 +59,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         eye_controller.control_eye(rt.eye_mut());
 
-        rt.render_single_triangle(&triangle);
+        // rt.render_single_triangle(&triangle);
+        rt.render_scene(&scene);
 
         ws.update_image(rt.raw_image()).expect("Couldn't update");
 

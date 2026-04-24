@@ -60,26 +60,26 @@ mod test {
         // Make sure that the position triangle iterator gives the right results
         for (i, triangle) in model.position_triangles().enumerate() {
             if i == 0 {
-                assert!(*triangle[0] == Vec3::new(1.0, 2.0, 3.0));
-                assert!(*triangle[1] == Vec3::new(4.0, 5.0, 6.0));
-                assert!(*triangle[2] == Vec3::new(1.0, 2.0, 3.0));
+                assert!(triangle[0] == Vec3::new(1.0, 2.0, 3.0));
+                assert!(triangle[1] == Vec3::new(4.0, 5.0, 6.0));
+                assert!(triangle[2] == Vec3::new(1.0, 2.0, 3.0));
             } else if i == 1 {
-                assert!(*triangle[0] == Vec3::new(4.0, 5.0, 6.0));
-                assert!(*triangle[1] == Vec3::new(4.0, 5.0, 6.0));
-                assert!(*triangle[2] == Vec3::new(1.0, 2.0, 3.0));
+                assert!(triangle[0] == Vec3::new(4.0, 5.0, 6.0));
+                assert!(triangle[1] == Vec3::new(4.0, 5.0, 6.0));
+                assert!(triangle[2] == Vec3::new(1.0, 2.0, 3.0));
             }
         }
 
         // Make sure that the normal triangle iterator gives the right results
         for (i, triangle) in model.normal_triangles().enumerate() {
             if i == 0 {
-                assert!(*triangle[0] == Vec3::new(-1.0, -2.0, -3.0));
-                assert!(*triangle[1] == Vec3::new(-4.0, -5.0, -6.0));
-                assert!(*triangle[2] == Vec3::new(-1.0, -2.0, -3.0));
+                assert!(triangle[0] == Vec3::new(-1.0, -2.0, -3.0));
+                assert!(triangle[1] == Vec3::new(-4.0, -5.0, -6.0));
+                assert!(triangle[2] == Vec3::new(-1.0, -2.0, -3.0));
             } else if i == 1 {
-                assert!(*triangle[0] == Vec3::new(-4.0, -5.0, -6.0));
-                assert!(*triangle[1] == Vec3::new(-4.0, -5.0, -6.0));
-                assert!(*triangle[2] == Vec3::new(-1.0, -2.0, -3.0));
+                assert!(triangle[0] == Vec3::new(-4.0, -5.0, -6.0));
+                assert!(triangle[1] == Vec3::new(-4.0, -5.0, -6.0));
+                assert!(triangle[2] == Vec3::new(-1.0, -2.0, -3.0));
             }
         }
     }
