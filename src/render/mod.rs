@@ -98,7 +98,7 @@ impl RayTracer {
         &mut self.eye
     }
 
-    pub fn render_scene(&mut self, scene: &Scene) {
+    pub fn render_scene(&mut self) {
         // TODO: Figure out how to give freedom of changing FOV
         
         // Fill with black.
@@ -120,16 +120,17 @@ impl RayTracer {
                     direction: self.eye.rotation * direction,
                 };
 
-                'triangle_search: for mesh in scene.meshes() {
+                'triangle_search: for mesh in self.scene.meshes() {
                     for (i, position_triangle) in mesh.position_triangles().enumerate() {
                         // TODO: Hardcoded
                         // Ray hit
+                        fastrand::seed(i as u64);
                         if let Some(ray_hit) = Self::calculate_ray_triangle_intersection(&ray, &position_triangle) {
                             let factor = ((4.0 - (ray.origin - ray_hit).length()) / 4.0).clamp(0.0, 1.0);
                             self.image.pixels[(x + y * self.image.size[0]) as usize] = Pixel {
-                                b: (TRIANGLE_COLORS[i % 10].b as f32 * factor) as u8,
-                                g: (TRIANGLE_COLORS[i % 10].g as f32 * factor) as u8,
-                                r: (TRIANGLE_COLORS[i % 10].r as f32 * factor) as u8,
+                                b: (fastrand::u8(32..=255) as f32 * factor) as u8,
+                                g: (fastrand::u8(32..=255) as f32 * factor) as u8,
+                                r: (fastrand::u8(32..=255) as f32 * factor) as u8,
                                 a: 255,
                             };
                             break 'triangle_search;

@@ -20,11 +20,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     fastrand::seed(0);
 
-    let scene = Scene::load("tests/data/Sphere.glb")?;
-    
     let mut ws = WindowSurface::new([300, 300])?;
     let mut rt = RayTracer::new(
-        Image::new([300, 300]),
+        Image::new([250, 250]),
         Eye {
             position: Vec3::new(0.0, 0.0, 0.0),
             rotation: Quat::from_euler(glam::EulerRot::XYZ, 0.0, 0.0, 0.0),
@@ -59,8 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         eye_controller.control_eye(rt.eye_mut());
 
-        // rt.render_single_triangle(&triangle);
-        rt.render_scene(&scene);
+        rt.render_scene();
 
         ws.update_image(rt.raw_image()).expect("Couldn't update");
 

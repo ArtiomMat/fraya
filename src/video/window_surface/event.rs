@@ -217,17 +217,6 @@ fn from_sdl_keycode(keycode: sdl3::keyboard::Keycode) -> Option<Key> {
         Y => Key::Y,
         Z => Key::Z,
 
-        Num0 => Key::Num0,
-        Num1 => Key::Num1,
-        Num2 => Key::Num2,
-        Num3 => Key::Num3,
-        Num4 => Key::Num4,
-        Num5 => Key::Num5,
-        Num6 => Key::Num6,
-        Num7 => Key::Num7,
-        Num8 => Key::Num8,
-        Num9 => Key::Num9,
-
         Return => Key::Enter,
         Escape => Key::Escape,
         Backspace => Key::Backspace,
@@ -254,6 +243,80 @@ fn from_sdl_keycode(keycode: sdl3::keyboard::Keycode) -> Option<Key> {
         LGui => Key::MetaLeft,
         RGui => Key::MetaRight,
 
+        CapsLock => Key::CapsLock,
+
+        // Function keys
+        F1 => Key::F1,
+        F2 => Key::F2,
+        F3 => Key::F3,
+        F4 => Key::F4,
+        F5 => Key::F5,
+        F6 => Key::F6,
+        F7 => Key::F7,
+        F8 => Key::F8,
+        F9 => Key::F9,
+        F10 => Key::F10,
+        F11 => Key::F11,
+        F12 => Key::F12,
+        // Symbols
+        Minus => Key::Minus,
+        Equals => Key::Equal,
+        LeftBracket => Key::BracketLeft,
+        RightBracket => Key::BracketRight,
+        Backslash => Key::Backslash,
+        Semicolon => Key::Semicolon,
+        Comma => Key::Comma,
+        Period => Key::Period,
+        Slash => Key::Slash,
+        // System
+        PrintScreen => Key::PrintScreen,
+        Pause => Key::Pause,
+        Application => Key::Menu,
+        // Media
+        VolumeUp => Key::VolumeUp,
+        VolumeDown => Key::VolumeDown,
+        Mute => Key::VolumeMute,
+        // Numbers
+        _0 => Key::Num0,
+        _1 => Key::Num1,
+        _2 => Key::Num2,
+        _3 => Key::Num3,
+        _4 => Key::Num4,
+        _5 => Key::Num5,
+        _6 => Key::Num6,
+        _7 => Key::Num7,
+        _8 => Key::Num8,
+        _9 => Key::Num9,
+        // Locks
+        NumLockClear => Key::NumLock,
+        ScrollLock => Key::ScrollLock,
+        // Symbols
+        Apostrophe => Key::Quote,
+        Grave => Key::Grave,
+        // Media
+        MediaPlayPause => Key::MediaPlayPause,
+        MediaStop => Key::MediaStop,
+        MediaNextTrack => Key::MediaNextTrack,
+        MediaPreviousTrack => Key::MediaPreviousTrack,
+
+        // Numpad
+        Kp0 => Key::Numpad0,
+        Kp1 => Key::Numpad1,
+        Kp2 => Key::Numpad2,
+        Kp3 => Key::Numpad3,
+        Kp4 => Key::Numpad4,
+        Kp5 => Key::Numpad5,
+        Kp6 => Key::Numpad6,
+        Kp7 => Key::Numpad7,
+        Kp8 => Key::Numpad8,
+        Kp9 => Key::Numpad9,
+        KpPlus => Key::NumpadAdd,
+        KpMinus => Key::NumpadSubtract,
+        KpMultiply => Key::NumpadMultiply,
+        KpDivide => Key::NumpadDivide,
+        KpEnter => Key::NumpadEnter,
+        KpPeriod => Key::NumpadDecimal,
+        
         _ => return None,
     })
 }

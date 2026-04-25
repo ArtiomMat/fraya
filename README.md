@@ -23,6 +23,7 @@ Renders an ico-sphere.
     - [x] Finding a way to 
     - [x] Rendering a `Mesh`.
     - [x] For now via iterating one by one.
-- [ ] 
 - [ ] BVH(May move)
+    - [x] Cleanup some the APIs particularly `Triangle`.
+    - [ ] SAH-based AABB implemntation.
 - [ ] Point light
