@@ -1,4 +1,7 @@
+pub use soup::Soup;
 use crate::math::aabb;
+
+pub mod soup;
 
 enum BvhNode {
     Branch {
@@ -11,8 +14,8 @@ enum BvhNode {
         bounds: aabb::BoundingBox,
         /// First index into the primitive array
         first: u32,
-        /// Last index into the primitive array
-        end_exclusive: u32,
+        /// Exclusive end index into the primitive array
+        end: u32,
     },
 }
 

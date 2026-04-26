@@ -34,3 +34,15 @@ impl<'a, T> Iterator for TrianglesIter<'a, T> where T: Clone + Copy {
         }
     }
 }
+
+impl<T> ExactSizeIterator for TrianglesIter<'_, T> where T: Copy {
+    fn len(&self) -> usize {
+        let (lower, upper) = self.size_hint();
+        // Note: This assertion is overly defensive, but it checks the invariant
+        // guaranteed by the trait. If this trait were rust-internal,
+        // we could use debug_assert!; assert_eq! will check all Rust user
+        // implementations too.
+        std::assert_eq!(upper, Some(lower));
+        lower
+    }
+}
