@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::math::Vec3;
 
 /// By design only `Vec3` to avoid generics complexity.
@@ -10,16 +12,15 @@ pub struct BoundingBox {
 }
 
 impl BoundingBox {
-    pub fn from_many<T>(many: &[T]) -> Option<Self>
+    pub fn from_many<T>(mut many: T) -> Option<Self>
     where
-        T: Bounded,
+        T: Iterator<Item: Bounded>
     {
-        let mut iter = many.iter();
-        let Some(first) = iter.next() else { return None };
+        let Some(first) = many.next() else { return None };
 
         let mut result = first.aabb_bound();
 
-        for x in iter {
+        for x in many {
             let bound = x.aabb_bound();
             result.max = result.max.max(bound.max);
             result.min = result.min.min(bound.min);
@@ -49,6 +50,13 @@ impl Bounded for BoundingBox {
     }
 }
 
+/// Blanket implementation for sake
+impl<T: Bounded> Bounded for &T {
+    fn aabb_bound(&self) -> BoundingBox {
+        (*self).aabb_bound()
+    }
+}
+
 /// Blanket implementation for merging a slice of many boundable elements
 ///
 /// # Panics
@@ -56,9 +64,9 @@ impl Bounded for BoundingBox {
 /// Panics when the slice is 0 sized.
 impl<T> Bounded for [T]
 where
-    T: Bounded,
+    T: Bounded
 {
     fn aabb_bound(&self) -> BoundingBox {
-        BoundingBox::from_many(self).expect("An empty slice cannot be bounded")
+        BoundingBox::from_many(self.iter()).expect("An empty slice cannot be bounded")
     }
 }
