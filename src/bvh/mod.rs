@@ -48,7 +48,7 @@ impl Bvh {
         end: usize,
         recursion_depth: u32,
     ) {
-        const ARRANGEMENTS_NUM: usize = 12;
+        const BINS_NUM: usize = 12;
         const MAX_PRIMITIVES_PER_LEAF: usize = 4;
 
         assert!(end != first);
@@ -66,8 +66,8 @@ impl Bvh {
             })
         }
 
-        for i in first..end {
-            for left_bucket in 0..12 {
+        for triangle_i in first..end {
+            for bin_i in 0..BINS_NUM {
                 
             }
         }
