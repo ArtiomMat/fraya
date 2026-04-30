@@ -1,9 +1,13 @@
+use std::ops::Range;
+
 /// Takes a slice of 3-index elements representing triangles and a slice of
 /// indexed data, and then can iterate and return a triangle of that data.
 pub struct TrianglesIter<'a, T> {
     slice: &'a [T],
     triangles: &'a [[u32; 3]],
     current_element: u32,
+    /// Exclusive end in the slice
+    end: u32,
 }
 
 impl<'a, T> TrianglesIter<'a, T> where T: Copy {
@@ -12,6 +16,7 @@ impl<'a, T> TrianglesIter<'a, T> where T: Copy {
             slice,
             triangles,
             current_element: 0,
+            end: slice.len() as u32,
         }
     }
 
@@ -19,13 +24,20 @@ impl<'a, T> TrianglesIter<'a, T> where T: Copy {
         let [a, b, c] = self.triangles[triangle_index as usize];
         [self.slice[a as usize], self.slice[b as usize], self.slice[c as usize]]
     }
+
+    /// Consumes `self` and returns a new iterator over the given range.
+    pub fn sub_iter(mut self, range: Range<usize>) -> Self {
+        self.current_element = range.start as u32;
+        self.end = range.end as u32;
+        self
+    }
 }
 
 impl<'a, T> Iterator for TrianglesIter<'a, T> where T: Clone + Copy {
     type Item = [T; 3];
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current_element as usize >= self.triangles.len() {
+        if self.current_element == self.end || self.current_element as usize >= self.triangles.len() {
             None
         } else {
             let triangle = self.current_element;

@@ -55,9 +55,10 @@ impl Bvh {
 
         if end - first <= MAX_PRIMITIVES_PER_LEAF {
             nodes.push(BvhNode::Leaf {
-                // TODO: Not taking a subset.
                 bounds: BoundingBox::from_many(
-                    mesh.position_triangles().map(|x| Triangle::from(x)),
+                    mesh.position_triangles()
+                        .sub_iter(first..end)
+                        .map(|x| Triangle::from(x)),
                 )
                 .unwrap(),
                 first: first as u32,
@@ -66,7 +67,9 @@ impl Bvh {
         }
 
         for i in first..end {
-            for left_bucket in 0..12 {}
+            for left_bucket in 0..12 {
+                
+            }
         }
     }
 
