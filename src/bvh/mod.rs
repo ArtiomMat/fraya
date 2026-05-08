@@ -42,6 +42,25 @@ impl Bvh {
         bounded.aabb_bound().surface_area() * (primitives_num as f32)
     }
 
+    /// Takes the `full_bounds` and creates a split along `axis`.
+    /// `left_bounds_factor` is from `0` to `1` and tells exactly where that
+    /// split is along `axis`.
+    /// 
+    /// Returns left bounding box and right bounding box.
+    fn split_bounds(full_bounds: BoundingBox, left_bounds_factor: f32, axis: usize) -> (BoundingBox, BoundingBox) {
+        // Left bound is the left part of the sliced full bounds
+        let mut left_bounds = full_bounds;
+        left_bounds.max[axis] -=
+            left_bounds_factor * full_bounds.length_along(axis);
+
+        // Right bound is the right part of the sliced full bounds
+        let mut right_bounds = full_bounds;
+        right_bounds.min[axis] += 
+            (1.0 - left_bounds_factor) * full_bounds.length_along(axis);
+    
+        (left_bounds, right_bounds)
+    }
+
     /// Iterates the range `first..end` in nodes and creates a new branch or
     /// leaf.
     ///
@@ -81,21 +100,15 @@ impl Bvh {
         }
 
         let longest_axis = full_bounds.longest_axis();
+        let mut best_cost: f32 = f32::INFINITY;
+        let mut best_cost_bin_i = 1;
 
         for bin_i in 1..BINS_NUM {
             // How much the left bounds take from the full bounds on the longest
             // axis. Imagine the line going from left to right depending on bin_i.
             let left_bounds_factor = bin_i as f32 / BINS_NUM as f32;
 
-            // Left bound is the left part of the sliced full bounds
-            let mut left_bounds = full_bounds;
-            left_bounds.max[longest_axis] -=
-                left_bounds_factor * full_bounds.length_along(longest_axis);
-
-            // Right bound is the right part of the sliced full bounds
-            let mut right_bounds = full_bounds;
-            right_bounds.min[longest_axis] += 
-                (1.0 - left_bounds_factor) * full_bounds.length_along(longest_axis);
+            let (left_bounds, right_bounds) = Self::split_bounds(full_bounds, left_bounds_factor, longest_axis);
 
             let mut right_primitives = 0;
             let mut left_primitives = 0;
@@ -111,13 +124,15 @@ impl Bvh {
 
             // Calculate cost of the split
             let cost = right_primitives as f32 * right_bounds.surface_area() + left_primitives as f32 * left_bounds.surface_area();
-
-            println!("cost of configuration {}: {}", left_bounds_factor, cost);
+            if cost < best_cost {
+                best_cost = cost;
+                best_cost_bin_i = bin_i;
+            }
 
             // TODO: We have a few things to do left
             //       [x] Separate by centroids into left and right.
             //       [x] Calculate the cost.
-            //       [ ] Find a way to keep track of what configuration was best.
+            //       [x] Find a way to keep track of what configuration was best.
             //       [ ] Optimize it because there is a lot of potential for running
             //         the same code multiple times with finding the best and shit.
             //
@@ -127,6 +142,12 @@ impl Bvh {
             //
             //       God speed.
         }
+
+        // Finally perform the best split
+        let left_bounds_factor = best_cost_bin_i as f32 / BINS_NUM as f32;
+        let (left_bounds, right_bounds) = Self::split_bounds(full_bounds, left_bounds_factor, longest_axis);
+
+        
     }
 
     /// Optimizes the primitives' order for internal access reasons, doesn't
