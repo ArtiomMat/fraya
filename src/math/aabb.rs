@@ -52,6 +52,12 @@ impl BoundingBox {
             2
         }
     }
+
+    pub fn is_point_inside(&self, point: Vec3) -> bool {
+        point.x >= self.min.x && point.x <= self.max.x &&
+        point.y >= self.min.y && point.y <= self.max.y &&
+        point.z >= self.min.z && point.z <= self.max.z
+    }
 }
 
 /// A trait that should be implemented by anything that can be bounded via AABB.

@@ -85,7 +85,7 @@ impl Bvh {
         for bin_i in 1..BINS_NUM {
             // How much the left bounds take from the full bounds on the longest
             // axis. Imagine the line going from left to right depending on bin_i.
-            let left_bounds_factor = (BINS_NUM - bin_i) as f32 / BINS_NUM as f32;
+            let left_bounds_factor = bin_i as f32 / BINS_NUM as f32;
 
             // Left bound is the left part of the sliced full bounds
             let mut left_bounds = full_bounds;
@@ -95,20 +95,37 @@ impl Bvh {
             // Right bound is the right part of the sliced full bounds
             let mut right_bounds = full_bounds;
             right_bounds.min[longest_axis] += 
-                left_bounds_factor * full_bounds.length_along(longest_axis);
+                (1.0 - left_bounds_factor) * full_bounds.length_along(longest_axis);
+
+            let mut right_primitives = 0;
+            let mut left_primitives = 0;
+
+            // Determining in which sub-bounds each triangle lies
+            for triangle in mesh.position_triangles().map(|x| Triangle::from(x)) {
+                if left_bounds.is_point_inside(triangle.centroid()) {
+                    left_primitives += 1
+                } else {
+                    right_primitives += 1
+                }
+            }
+
+            // Calculate cost of the split
+            let cost = right_primitives as f32 * right_bounds.surface_area() + left_primitives as f32 * left_bounds.surface_area();
+
+            println!("cost of configuration {}: {}", left_bounds_factor, cost);
 
             // TODO: We have a few things to do left
-            //       - Separate by centroids into left and right.
-            //       - Calculate the cost.
-            //       - Find a way to keep track of what configuration was best.
-            //       - Optimize it because there is a lot of potential for running
+            //       [x] Separate by centroids into left and right.
+            //       [x] Calculate the cost.
+            //       [ ] Find a way to keep track of what configuration was best.
+            //       [ ] Optimize it because there is a lot of potential for running
             //         the same code multiple times with finding the best and shit.
             //
             //       We could cache the resorted triangles of the best
             //       configuration so far when we don't have many triangles to
             //       speed up deeper branches(to not resort when we exit the loop).
             //
-            //       God speed lad.
+            //       God speed.
         }
     }
 
