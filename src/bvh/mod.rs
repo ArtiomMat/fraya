@@ -1,11 +1,17 @@
+use std::ops::Range;
+
 use crate::{
-    math::{BoundingBox, Triangle, aabb},
+    math::{
+        BoundingBox, Triangle,
+        aabb::{self, Bounded},
+    },
     scene::Mesh,
 };
 pub use soup::Soup;
 
 pub mod soup;
 
+#[derive(Clone)]
 enum BvhNode {
     Branch {
         bounds: aabb::BoundingBox,
@@ -15,10 +21,8 @@ enum BvhNode {
     /// A leaf is just a branch that points to the outside primitive array
     Leaf {
         bounds: aabb::BoundingBox,
-        /// First index into the primitive array
-        first: u32,
-        /// Exclusive end index into the primitive array
-        end: u32,
+        // Range of indices into the primitives inside the object we accelarate
+        range: Range<u32>,
     },
 }
 
@@ -27,9 +31,16 @@ pub struct Bvh {
     root: usize,
 }
 
+const BINS_NUM: usize = 12;
+const MAX_PRIMITIVES_PER_LEAF: usize = 4;
+
 impl Bvh {
     // TODO: Instead of a slice of primitives accept a type that itself can
     // give an iterator or generate an AABB on random access.
+
+    fn calculate_cost<T: Bounded>(bounded: T, primitives_num: usize) -> f32 {
+        bounded.aabb_bound().surface_area() * (primitives_num as f32)
+    }
 
     /// Iterates the range `first..end` in nodes and creates a new branch or
     /// leaf.
@@ -44,44 +55,92 @@ impl Bvh {
         nodes: &mut Vec<BvhNode>,
         parent_node: usize,
         mesh: &mut Mesh,
-        first: usize,
-        end: usize,
+        range: Range<usize>,
         recursion_depth: u32,
     ) {
-        const BINS_NUM: usize = 12;
-        const MAX_PRIMITIVES_PER_LEAF: usize = 4;
+        let first = range.start;
+        let end = range.end;
 
-        assert!(end != first);
+        assert!(end != first, "Given an empty range");
+
+        // TODO: Maybe duplicate logic since parent already has the "full bounds"
+        //       But need to look into, in that case probably first and end too
+        //       would be redundant. I think everything is in the parent...
+        let full_bounds = BoundingBox::from_many(
+            mesh.position_triangles()
+                .sub_iter(first..end)
+                .map(|x| Triangle::from(x)),
+        )
+        .expect("Expected to have something");
 
         if end - first <= MAX_PRIMITIVES_PER_LEAF {
-            nodes.push(BvhNode::Leaf {
-                bounds: BoundingBox::from_many(
-                    mesh.position_triangles()
-                        .sub_iter(first..end)
-                        .map(|x| Triangle::from(x)),
-                )
-                .unwrap(),
-                first: first as u32,
-                end: end as u32,
-            })
+            return nodes.push(BvhNode::Leaf {
+                bounds: full_bounds,
+                range: first as u32..end as u32,
+            });
         }
 
-        for triangle_i in first..end {
-            for bin_i in 0..BINS_NUM {
-                
-            }
+        let longest_axis = full_bounds.longest_axis();
+
+        for bin_i in 1..BINS_NUM {
+            // How much the left bounds take from the full bounds on the longest
+            // axis. Imagine the line going from left to right depending on bin_i.
+            let left_bounds_factor = (BINS_NUM - bin_i) as f32 / BINS_NUM as f32;
+
+            // Left bound is the left part of the sliced full bounds
+            let mut left_bounds = full_bounds;
+            left_bounds.max[longest_axis] -=
+                left_bounds_factor * full_bounds.length_along(longest_axis);
+
+            // Right bound is the right part of the sliced full bounds
+            let mut right_bounds = full_bounds;
+            right_bounds.min[longest_axis] += 
+                left_bounds_factor * full_bounds.length_along(longest_axis);
+
+            // TODO: We have a few things to do left
+            //       - Separate by centroids into left and right.
+            //       - Calculate the cost.
+            //       - Find a way to keep track of what configuration was best.
+            //       - Optimize it because there is a lot of potential for running
+            //         the same code multiple times with finding the best and shit.
+            //
+            //       We could cache the resorted triangles of the best
+            //       configuration so far when we don't have many triangles to
+            //       speed up deeper branches(to not resort when we exit the loop).
+            //
+            //       God speed lad.
         }
     }
 
     /// Optimizes the primitives' order for internal access reasons, doesn't
     /// care what they are only that an `aabb::Bound` can be made.
-    pub fn new<P: aabb::Bounded>(mesh: &mut Mesh) -> Self {
+    pub fn new(mesh: &mut Mesh) -> Self {
         let mut nodes = Vec::<BvhNode>::new();
         let mut root = 0;
 
-        // split_with_sah(nodes, mesh, 0, mesh.triangles.len(), 0);
+        // TODO: Instead of expect return the error
 
-        // TODO: Implement the BVH
+        let bounding_box =
+            BoundingBox::from_many(mesh.position_triangles().map(|x| Triangle::from(x)))
+                .expect("Expected to have something");
+
+        // Setting up the root node and then the splits if we need to
+        if mesh.triangles.len() <= MAX_PRIMITIVES_PER_LEAF {
+            nodes.push(BvhNode::Leaf {
+                bounds: bounding_box,
+                range: 0..mesh.triangles.len() as u32,
+            });
+        } else {
+            // TODO: 0 for the children are stubs, maybe this can be cleaner.
+            nodes.push(BvhNode::Branch {
+                bounds: bounding_box,
+                l: 0,
+                r: 0,
+            });
+
+            Self::split_with_sah(&mut nodes, root, mesh, root..mesh.triangles.len(), 0);
+        }
+
         Self { nodes, root }
     }
 }

@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use crate::bvh::Bvh;
 use crate::eye_controller::EyeController;
 use crate::math::{Quat, Triangle, Vec3};
 use crate::render::{Eye, RayTracer, eye::EyeSettings};
@@ -19,6 +20,9 @@ mod eye_controller;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     fastrand::seed(0);
+
+    let mut person_scene = Scene::load("tests/data/person.glb")?;
+    Bvh::new(&mut person_scene.meshes[0]);
 
     let mut ws = WindowSurface::new([300, 300])?;
     let mut rt = RayTracer::new(

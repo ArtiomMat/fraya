@@ -29,12 +29,28 @@ impl BoundingBox {
         Some(result)
     }
 
+    pub fn length_along(&self, axis: usize) -> f32 {
+        self.max[axis] - self.min[axis]
+    }
+
     /// Returns the surface area of the AABB
     pub fn surface_area(&self) -> f32 {
-        let x = (self.max.x - self.min.x).abs();
-        let y = (self.max.y - self.min.y).abs();
-        let z = (self.max.z - self.min.z).abs();
+        let x = self.length_along(0);
+        let y = self.length_along(1);
+        let z = self.length_along(2);
         2.0 * (x * y + x * z + y * z)
+    }
+
+    /// Returns the axis index with most extent.
+    pub fn longest_axis(&self) -> usize {
+        let extent = self.max - self.min;
+        if extent.x > extent.y && extent.x > extent.z {
+            0
+        } else if extent.y > extent.z {
+            1
+        } else {
+            2
+        }
     }
 }
 

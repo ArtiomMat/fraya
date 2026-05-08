@@ -27,7 +27,7 @@ pub struct Scene {
     root_objects: Vec<ObjectIndex>,
     default_eye: Option<EyeIndex>,
     eyes: Vec<Eye>,
-    meshes: Vec<Mesh>,
+    pub meshes: Vec<Mesh>,
     objects: Vec<Object>,
 }
 
