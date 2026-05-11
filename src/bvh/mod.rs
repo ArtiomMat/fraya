@@ -114,7 +114,7 @@ impl Bvh {
             let mut left_primitives = 0;
 
             // Determining in which sub-bounds each triangle lies
-            for triangle in mesh.position_triangles().map(|x| Triangle::from(x)) {
+            for triangle in mesh.position_triangles().sub_iter(first..end).map(|x| Triangle::from(x)) {
                 if left_bounds.is_point_inside(triangle.centroid()) {
                     left_primitives += 1
                 } else {
@@ -147,7 +147,29 @@ impl Bvh {
         let left_bounds_factor = best_cost_bin_i as f32 / BINS_NUM as f32;
         let (left_bounds, right_bounds) = Self::split_bounds(full_bounds, left_bounds_factor, longest_axis);
 
-        
+        // First we need to reorder the triangles to be able to express the BVH in terms of just
+        // ranges. We do it by making two groups in the slice we have, one for the left bounds and
+        // one for the right bounds, so left is literally on the left side and same for right
+        // group.
+        let mut right_ptr = end - 1;
+        for left_ptr in first..end {
+            if right_bounds.is_point_inside(Triangle::from(mesh.position_triangles().get(left_ptr as u32)).centroid()) {
+                // The triangle needs to be swapped to right
+                
+                // Move `right_ptr` left until we cross with left_ptr or find a triangle that needs to be swapped too to left
+                while right_ptr > left_ptr && right_bounds.is_point_inside(Triangle::from(mesh.position_triangles().get(right_ptr as u32)).centroid()) {
+                    right_ptr -= 1;
+                }
+
+                if right_ptr <= left_ptr {
+                    // Stop condition, left_ptr and right_ptr crossed so no more reordering
+                    // opportunities.
+                    break;
+                }
+
+                mesh.triangles.swap(left_ptr, right_ptr);
+            }
+        }
     }
 
     /// Optimizes the primitives' order for internal access reasons, doesn't

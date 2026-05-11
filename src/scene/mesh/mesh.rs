@@ -33,6 +33,9 @@ impl Mesh {
     pub fn position_triangles(&self) -> TrianglesIter<'_, Vec3> {
         TrianglesIter::new(self.positions.as_slice(), self.triangles.as_slice())
     }
+    pub fn position_triangle(&self, i: usize) -> [Vec3; 3] {
+        TrianglesIter::new(self.positions.as_slice(), &[self.triangles[i]]).next().unwrap()
+    }
     pub fn normal_triangles(&self) -> TrianglesIter<'_, Vec3> {
         TrianglesIter::new(self.normals.as_slice(), self.triangles.as_slice())
     }
