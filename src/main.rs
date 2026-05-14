@@ -21,8 +21,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     fastrand::seed(0);
 
-    let mut person_scene = Scene::load("tests/data/person.glb")?;
-    Bvh::new(&mut person_scene.meshes[0]);
+    let mut scene = Scene::load("tests/data/WeirdBox.glb")?;
+    Bvh::new(&mut scene.meshes[0]);
 
     let mut ws = WindowSurface::new([300, 300])?;
     let mut rt = RayTracer::new(
@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 samples_per_pixel: 3,
             },
         },
-        Scene::load("tests/data/Sphere.glb")?,
+        scene,
     );
     let triangle = [
         Vec3::new(-0.7, 0.5, -2.5),

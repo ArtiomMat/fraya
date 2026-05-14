@@ -170,6 +170,8 @@ impl Bvh {
                 mesh.triangles.swap(left_ptr, right_ptr);
             }
         }
+
+        println!("The right group begins at {} out of {}", right_ptr, end);
     }
 
     /// Optimizes the primitives' order for internal access reasons, doesn't

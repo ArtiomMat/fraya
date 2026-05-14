@@ -2,21 +2,71 @@ pub use eye::Eye;
 
 pub mod eye;
 
-use crate::math::{vec3, Ray, Triangle, Vec3, EPSILON};
+use crate::math::{EPSILON, Ray, Triangle, Vec3, vec3};
 use crate::scene::Scene;
 use crate::video::{Image, Pixel, Surface};
 
 const TRIANGLE_COLORS: [Pixel; 10] = [
-    Pixel { b: 214, g:  47, r: 189, a: 255 }, // triangle 0
-    Pixel { b:  91, g: 203, r:  38, a: 255 }, // triangle 1
-    Pixel { b: 172, g:  15, r: 240, a: 255 }, // triangle 2
-    Pixel { b:  33, g: 118, r:  77, a: 255 }, // triangle 3
-    Pixel { b: 255, g:  82, r: 144, a: 255 }, // triangle 4
-    Pixel { b:   7, g: 231, r:  60, a: 255 }, // triangle 5
-    Pixel { b: 130, g: 199, r: 210, a: 255 }, // triangle 6
-    Pixel { b:  64, g:  44, r: 101, a: 255 }, // triangle 7
-    Pixel { b: 188, g: 156, r:  19, a: 255 }, // triangle 8
-    Pixel { b:  22, g:  73, r: 233, a: 255 }, // triangle 9
+    Pixel {
+        b: 214,
+        g: 47,
+        r: 189,
+        a: 255,
+    }, // triangle 0
+    Pixel {
+        b: 91,
+        g: 203,
+        r: 38,
+        a: 255,
+    }, // triangle 1
+    Pixel {
+        b: 172,
+        g: 15,
+        r: 240,
+        a: 255,
+    }, // triangle 2
+    Pixel {
+        b: 33,
+        g: 118,
+        r: 77,
+        a: 255,
+    }, // triangle 3
+    Pixel {
+        b: 255,
+        g: 82,
+        r: 144,
+        a: 255,
+    }, // triangle 4
+    Pixel {
+        b: 7,
+        g: 231,
+        r: 60,
+        a: 255,
+    }, // triangle 5
+    Pixel {
+        b: 130,
+        g: 199,
+        r: 210,
+        a: 255,
+    }, // triangle 6
+    Pixel {
+        b: 64,
+        g: 44,
+        r: 101,
+        a: 255,
+    }, // triangle 7
+    Pixel {
+        b: 188,
+        g: 156,
+        r: 19,
+        a: 255,
+    }, // triangle 8
+    Pixel {
+        b: 22,
+        g: 73,
+        r: 233,
+        a: 255,
+    }, // triangle 9
 ];
 
 /// Takes ownership of the scene, settings, surface and specializes
@@ -87,7 +137,7 @@ impl RayTracer {
     }
 
     /// Returns the raw render image.
-    /// 
+    ///
     /// You should use `finish()` to actually get a full result to pass to
     /// the advanced post-processing steps(e.g. denoiser).
     pub fn raw_image(&self) -> &Image {
@@ -99,8 +149,16 @@ impl RayTracer {
     }
 
     pub fn render_scene(&mut self) {
+        // FIXME: With WeirdBox.glb, watching from top it has a hole?
+        //        Reason: We stop iteration when we see the first hit.
+        //        But actually we need to stop when it's the closest
+        //        hit.
+        //        
+        //        Fix it when you have a proper BVH right now it will
+        //        obliterate FPS.
+
         // TODO: Figure out how to give freedom of changing FOV
-        
+
         // Fill with black.
         self.image.pixels.fill(Pixel::default());
 
@@ -109,7 +167,10 @@ impl RayTracer {
             // TODO: Signs on x and y are hardcoded, but depend on image pixel order.
             for y in 0..self.image.size[1] {
                 let direction = Vec3::new(
-                    vec3::RIGHT.x * 2.0 * (x as f32 / self.image.size[0] as f32 - 0.5) * self.aspect_ratio,
+                    vec3::RIGHT.x
+                        * 2.0
+                        * (x as f32 / self.image.size[0] as f32 - 0.5)
+                        * self.aspect_ratio,
                     -vec3::UP.y * 2.0 * (y as f32 / self.image.size[1] as f32 - 0.5),
                     vec3::FORWARD.z,
                 )
@@ -124,13 +185,49 @@ impl RayTracer {
                     for (i, position_triangle) in mesh.position_triangles().enumerate() {
                         // TODO: Hardcoded
                         // Ray hit
-                        fastrand::seed(i as u64);
-                        if let Some(ray_hit) = Self::calculate_ray_triangle_intersection(&ray, &position_triangle) {
-                            let factor = ((4.0 - (ray.origin - ray_hit).length()) / 4.0).clamp(0.0, 1.0);
+                        if let Some(ray_hit) =
+                            Self::calculate_ray_triangle_intersection(&ray, &position_triangle)
+                        {
+                            // WHITE
+                            // let pixel = Pixel { b: 255, g: 255, r: 255, a: 255 };
+
+                            // RANDOM COLOR BY INDEX
+                            // fastrand::seed(i as u64);
+                            // let pixel = Pixel {
+                            //     b: (fastrand::u8(32..=255)),
+                            //     g: (fastrand::u8(32..=255)),
+                            //     r: (fastrand::u8(32..=255)),
+                            //     a: 255,
+                            // };
+
+                            // SPLIT BASED COLOR
+                            // NOTE: The split index is tied to where the BVH splits it.
+                            // This is for debugging purposes it's a shitty way to do it
+                            // but it will be improved.
+                            //
+                            // Tuned for BVH construction of WeirdBox
+                            let split_index = 26;
+                            let pixel = if i >= split_index {
+                                Pixel {
+                                    b: 0,
+                                    g: 0,
+                                    r: 255,
+                                    a: 255,
+                                }
+                            } else {
+                                Pixel {
+                                    b: 255,
+                                    g: 128,
+                                    r: 0,
+                                    a: 255,
+                                }
+                            };
+                            let factor = ((5.0 - (ray.origin - ray_hit).length()) / 4.0).clamp(0.0, 1.0);
+                            // let factor = 1.0;
                             self.image.pixels[(x + y * self.image.size[0]) as usize] = Pixel {
-                                b: (fastrand::u8(32..=255) as f32 * factor) as u8,
-                                g: (fastrand::u8(32..=255) as f32 * factor) as u8,
-                                r: (fastrand::u8(32..=255) as f32 * factor) as u8,
+                                b: (pixel.b as f32 * factor) as u8,
+                                g: (pixel.g as f32 * factor) as u8,
+                                r: (pixel.r as f32 * factor) as u8,
                                 a: 255,
                             };
                             break 'triangle_search;
@@ -146,7 +243,7 @@ impl RayTracer {
     //       were made this iteration and stuff. But OFC that's for later...
     pub fn render_single_triangle(&mut self, triangle: &[Vec3; 3]) {
         // TODO: Figure out how to give freedom of changing FOV
-        
+
         // Fill with black.
         self.image.pixels.fill(Pixel::default());
 
@@ -155,7 +252,10 @@ impl RayTracer {
             // TODO: Signs on x and y are hardcoded, but depend on image pixel order.
             for y in 0..self.image.size[1] {
                 let direction = Vec3::new(
-                    vec3::RIGHT.x * 2.0 * (x as f32 / self.image.size[0] as f32 - 0.5) * self.aspect_ratio,
+                    vec3::RIGHT.x
+                        * 2.0
+                        * (x as f32 / self.image.size[0] as f32 - 0.5)
+                        * self.aspect_ratio,
                     -vec3::UP.y * 2.0 * (y as f32 / self.image.size[1] as f32 - 0.5),
                     vec3::FORWARD.z,
                 )
