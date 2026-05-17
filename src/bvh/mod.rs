@@ -33,6 +33,7 @@ pub struct Bvh {
 
 const BINS_NUM: usize = 12;
 const MAX_PRIMITIVES_PER_LEAF: usize = 4;
+const MAX_RECURSION_DEPTH: u32 = 4;
 
 impl Bvh {
     // TODO: Instead of a slice of primitives accept a type that itself can
@@ -45,19 +46,21 @@ impl Bvh {
     /// Takes the `full_bounds` and creates a split along `axis`.
     /// `left_bounds_factor` is from `0` to `1` and tells exactly where that
     /// split is along `axis`.
-    /// 
+    ///
     /// Returns left bounding box and right bounding box.
-    fn split_bounds(full_bounds: BoundingBox, left_bounds_factor: f32, axis: usize) -> (BoundingBox, BoundingBox) {
+    fn split_bounds(
+        full_bounds: BoundingBox,
+        left_bounds_factor: f32,
+        axis: usize,
+    ) -> (BoundingBox, BoundingBox) {
         // Left bound is the left part of the sliced full bounds
         let mut left_bounds = full_bounds;
-        left_bounds.max[axis] -=
-            left_bounds_factor * full_bounds.length_along(axis);
+        left_bounds.max[axis] -= left_bounds_factor * full_bounds.length_along(axis);
 
         // Right bound is the right part of the sliced full bounds
         let mut right_bounds = full_bounds;
-        right_bounds.min[axis] += 
-            (1.0 - left_bounds_factor) * full_bounds.length_along(axis);
-    
+        right_bounds.min[axis] += (1.0 - left_bounds_factor) * full_bounds.length_along(axis);
+
         (left_bounds, right_bounds)
     }
 
@@ -72,19 +75,16 @@ impl Bvh {
     /// the rest of the path.
     fn split_with_sah(
         nodes: &mut Vec<BvhNode>,
-        parent_node: usize,
         mesh: &mut Mesh,
         range: Range<usize>,
         recursion_depth: u32,
-    ) {
+    ) -> u32 {
         let first = range.start;
         let end = range.end;
 
+        // FIXME: Panic here when MAX_RECURSION_DEPTH == 4
         assert!(end != first, "Given an empty range");
 
-        // TODO: Maybe duplicate logic since parent already has the "full bounds"
-        //       But need to look into, in that case probably first and end too
-        //       would be redundant. I think everything is in the parent...
         let full_bounds = BoundingBox::from_many(
             mesh.position_triangles()
                 .sub_iter(first..end)
@@ -92,11 +92,12 @@ impl Bvh {
         )
         .expect("Expected to have something");
 
-        if end - first <= MAX_PRIMITIVES_PER_LEAF {
-            return nodes.push(BvhNode::Leaf {
+        if recursion_depth >= MAX_RECURSION_DEPTH || end - first <= MAX_PRIMITIVES_PER_LEAF {
+            nodes.push(BvhNode::Leaf {
                 bounds: full_bounds,
                 range: first as u32..end as u32,
             });
+            return (nodes.len() - 1) as u32;
         }
 
         let longest_axis = full_bounds.longest_axis();
@@ -108,13 +109,18 @@ impl Bvh {
             // axis. Imagine the line going from left to right depending on bin_i.
             let left_bounds_factor = bin_i as f32 / BINS_NUM as f32;
 
-            let (left_bounds, right_bounds) = Self::split_bounds(full_bounds, left_bounds_factor, longest_axis);
+            let (left_bounds, right_bounds) =
+                Self::split_bounds(full_bounds, left_bounds_factor, longest_axis);
 
             let mut right_primitives = 0;
             let mut left_primitives = 0;
 
             // Determining in which sub-bounds each triangle lies
-            for triangle in mesh.position_triangles().sub_iter(first..end).map(|x| Triangle::from(x)) {
+            for triangle in mesh
+                .position_triangles()
+                .sub_iter(first..end)
+                .map(|x| Triangle::from(x))
+            {
                 if left_bounds.is_point_inside(triangle.centroid()) {
                     left_primitives += 1
                 } else {
@@ -123,7 +129,8 @@ impl Bvh {
             }
 
             // Calculate cost of the split
-            let cost = right_primitives as f32 * right_bounds.surface_area() + left_primitives as f32 * left_bounds.surface_area();
+            let cost = right_primitives as f32 * right_bounds.surface_area()
+                + left_primitives as f32 * left_bounds.surface_area();
             if cost < best_cost {
                 best_cost = cost;
                 best_cost_bin_i = bin_i;
@@ -145,7 +152,8 @@ impl Bvh {
 
         // Finally perform the best split
         let left_bounds_factor = best_cost_bin_i as f32 / BINS_NUM as f32;
-        let (left_bounds, right_bounds) = Self::split_bounds(full_bounds, left_bounds_factor, longest_axis);
+        let (_left_bounds, right_bounds) =
+            Self::split_bounds(full_bounds, left_bounds_factor, longest_axis);
 
         // First we need to reorder the triangles to be able to express the BVH in terms of just
         // ranges. We do it by making two groups in the slice we have, one for the left bounds and
@@ -153,11 +161,17 @@ impl Bvh {
         // group.
         let mut right_ptr = end - 1;
         for left_ptr in first..end {
-            if right_bounds.is_point_inside(Triangle::from(mesh.position_triangles().get(left_ptr as u32)).centroid()) {
+            if right_bounds.is_point_inside(
+                Triangle::from(mesh.position_triangles().get(left_ptr as u32)).centroid(),
+            ) {
                 // The triangle needs to be swapped to right
-                
+
                 // Move `right_ptr` left until we cross with left_ptr or find a triangle that needs to be swapped too to left
-                while right_ptr > left_ptr && right_bounds.is_point_inside(Triangle::from(mesh.position_triangles().get(right_ptr as u32)).centroid()) {
+                while right_ptr > left_ptr
+                    && right_bounds.is_point_inside(
+                        Triangle::from(mesh.position_triangles().get(right_ptr as u32)).centroid(),
+                    )
+                {
                     right_ptr -= 1;
                 }
 
@@ -171,37 +185,41 @@ impl Bvh {
             }
         }
 
-        println!("The right group begins at {} out of {}", right_ptr, end);
+        // Recursively generate the branch
+        let l = Self::split_with_sah(nodes, mesh, right_ptr..end, recursion_depth + 1);
+        let r = Self::split_with_sah(nodes, mesh, first..right_ptr, recursion_depth + 1);
+
+        nodes.push(BvhNode::Branch {
+            bounds: full_bounds,
+            l,
+            r,
+        });
+        return (nodes.len() - 1) as u32;
     }
 
     /// Optimizes the primitives' order for internal access reasons, doesn't
     /// care what they are only that an `aabb::Bound` can be made.
     pub fn new(mesh: &mut Mesh) -> Self {
         let mut nodes = Vec::<BvhNode>::new();
-        let mut root = 0;
+        let root = 0;
 
-        // TODO: Instead of expect return the error
+        Self::split_with_sah(&mut nodes, mesh, root..mesh.triangles.len(), 0);
 
-        let bounding_box =
-            BoundingBox::from_many(mesh.position_triangles().map(|x| Triangle::from(x)))
-                .expect("Expected to have something");
+        // // Setting up the root node and then the splits if we need to
+        // if mesh.triangles.len() <= MAX_PRIMITIVES_PER_LEAF {
+        //     nodes.push(BvhNode::Leaf {
+        //         bounds: bounding_box,
+        //         range: 0..mesh.triangles.len() as u32,
+        //     });
+        // } else {
+        //     // TODO: 0 for the children are stubs, maybe this can be cleaner.
+        //     nodes.push(BvhNode::Branch {
+        //         bounds: bounding_box,
+        //         l: 0,
+        //         r: 0,
+        //     });
 
-        // Setting up the root node and then the splits if we need to
-        if mesh.triangles.len() <= MAX_PRIMITIVES_PER_LEAF {
-            nodes.push(BvhNode::Leaf {
-                bounds: bounding_box,
-                range: 0..mesh.triangles.len() as u32,
-            });
-        } else {
-            // TODO: 0 for the children are stubs, maybe this can be cleaner.
-            nodes.push(BvhNode::Branch {
-                bounds: bounding_box,
-                l: 0,
-                r: 0,
-            });
-
-            Self::split_with_sah(&mut nodes, root, mesh, root..mesh.triangles.len(), 0);
-        }
+        // }
 
         Self { nodes, root }
     }
