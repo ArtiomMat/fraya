@@ -44,24 +44,92 @@ impl Bvh {
     }
 
     /// Takes the `full_bounds` and creates a split along `axis`.
-    /// `left_bounds_factor` is from `0` to `1` and tells exactly where that
-    /// split is along `axis`.
+    /// `left_bounds_factor` is `0.0` to `1.0` and tells exactly where that
+    /// split is along `axis` from left to right.
     ///
     /// Returns left bounding box and right bounding box.
     fn split_bounds(
-        full_bounds: BoundingBox,
+        full_bounds: &BoundingBox,
         left_bounds_factor: f32,
         axis: usize,
     ) -> (BoundingBox, BoundingBox) {
         // Left bound is the left part of the sliced full bounds
-        let mut left_bounds = full_bounds;
+        let mut left_bounds = *full_bounds;
         left_bounds.max[axis] -= left_bounds_factor * full_bounds.length_along(axis);
 
         // Right bound is the right part of the sliced full bounds
-        let mut right_bounds = full_bounds;
+        let mut right_bounds = *full_bounds;
         right_bounds.min[axis] += (1.0 - left_bounds_factor) * full_bounds.length_along(axis);
 
         (left_bounds, right_bounds)
+    }
+
+    /// A wrapper for [Self::split_bounds] which determines the
+    /// `left_bounds_factor` using `bin_index`.
+    /// 
+    /// Imagine it as a stepped version of the original.
+    fn split_bounds_with_bin_index(
+        full_bounds: &BoundingBox,
+        bin_index: usize,
+        axis: usize,
+    ) -> (BoundingBox, BoundingBox) {
+        // How much the left bounds take from the full bounds on the longest
+        // axis. Imagine the line going from left to right depending on bin_index.
+        let left_bounds_factor = bin_index as f32 / BINS_NUM as f32;
+        Self::split_bounds(full_bounds, left_bounds_factor, axis)
+    }
+
+    /// Reorders the primitives in `range` by their centroids, depending on which
+    /// sub-bounding-box they belong to in `full_bounds`.
+    /// `bin_index` dictates the split along `axis`, see 
+    /// [Self::split_bounds_with_bin_index] for how it's calculated.
+    /// 
+    /// Returns the first element in the right bounding-box, anything behind
+    /// it(if any), belongs to the left bounding-box.
+    /// 
+    /// 
+    /// We reorder by just swapping elements with 2 pointers that are to intersect.
+    /// The idea is to swap until we have a clear separation between the primitives
+    /// that are meant to go into.
+    fn reorder_with_bin_index(
+        mesh: &mut Mesh,
+        range: Range<usize>,
+        full_bounds: &aabb::BoundingBox,
+        bin_index: usize,
+        axis: usize,
+    ) -> usize {
+        let first = range.start;
+        let end = range.end;
+        let (_left_bounds, right_bounds) =
+            Self::split_bounds_with_bin_index(full_bounds, bin_index, axis);
+
+        let mut right_ptr = end - 1;
+        for left_ptr in first..end {
+            if right_ptr <= left_ptr {
+                // Stop condition, left_ptr and right_ptr crossed so no more reordering
+                // opportunities.
+                break;
+            }
+
+            if right_bounds.is_point_inside(
+                Triangle::from(mesh.position_triangles().get(left_ptr as u32)).centroid(),
+            ) {
+                // The primitive needs to be swapped to right
+
+                // Move `right_ptr` left until we cross with left_ptr or find a triangle that needs to be swapped too to left
+                while right_ptr > left_ptr
+                    && right_bounds.is_point_inside(
+                        Triangle::from(mesh.position_triangles().get(right_ptr as u32)).centroid(),
+                    )
+                {
+                    right_ptr -= 1;
+                }
+
+                mesh.triangles.swap(left_ptr, right_ptr);
+            }
+        }
+
+        right_ptr
     }
 
     /// Iterates the range `first..end` in nodes and creates a new branch or
@@ -101,27 +169,23 @@ impl Bvh {
 
         let longest_axis = full_bounds.longest_axis();
         let mut best_cost: f32 = f32::INFINITY;
-        let mut best_cost_bin_i = 1;
+        let mut best_cost_bin_index = 1;
         let mut best_cost_is_leaf = false;
 
-        for bin_i in 0..BINS_NUM {
-            // How much the left bounds take from the full bounds on the longest
-            // axis. Imagine the line going from left to right depending on bin_i.
-            let left_bounds_factor = bin_i as f32 / BINS_NUM as f32;
-
+        for bin_index in 0..BINS_NUM {
             let (left_bounds, right_bounds) =
-                Self::split_bounds(full_bounds, left_bounds_factor, longest_axis);
+                Self::split_bounds_with_bin_index(&full_bounds, bin_index, longest_axis);
 
             let mut right_primitives = 0;
             let mut left_primitives = 0;
 
-            // Determining in which sub-bounds each triangle lies
-            for triangle in mesh
+            // Determining in which sub-bounds each primitive lies
+            for primitive in mesh
                 .position_triangles()
                 .sub_iter(first..end)
                 .map(|x| Triangle::from(x))
             {
-                if right_bounds.is_point_inside(triangle.centroid()) {
+                if right_bounds.is_point_inside(primitive.centroid()) {
                     right_primitives += 1;
                 } else {
                     left_primitives += 1;
@@ -133,7 +197,7 @@ impl Bvh {
                 + left_primitives as f32 * left_bounds.surface_area();
             if cost < best_cost {
                 best_cost = cost;
-                best_cost_bin_i = bin_i;
+                best_cost_bin_index = bin_index;
                 best_cost_is_leaf = left_primitives == 0 || right_primitives == 0;
             }
         }
@@ -148,39 +212,8 @@ impl Bvh {
         }
 
         // Finally perform the best split
-        let left_bounds_factor = best_cost_bin_i as f32 / BINS_NUM as f32;
-        let (left_bounds, right_bounds) =
-            Self::split_bounds(full_bounds, left_bounds_factor, longest_axis);
-
-        // First we need to reorder the triangles to be able to express the BVH in terms of just
-        // ranges. We do it by making two groups in the slice we have, one for the left bounds and
-        // one for the right bounds, so left is literally on the left side and same for right
-        // group. Example: [L, R, R, L, L] slice becomes [L, L, L, R, R]
-        let mut right_ptr = end - 1;
-        for left_ptr in first..end {
-            if right_ptr <= left_ptr {
-                // Stop condition, left_ptr and right_ptr crossed so no more reordering
-                // opportunities.
-                break;
-            }
-
-            if right_bounds.is_point_inside(
-                Triangle::from(mesh.position_triangles().get(left_ptr as u32)).centroid(),
-            ) {
-                // The triangle needs to be swapped to right
-
-                // Move `right_ptr` left until we cross with left_ptr or find a triangle that needs to be swapped too to left
-                while right_ptr > left_ptr
-                    && right_bounds.is_point_inside(
-                        Triangle::from(mesh.position_triangles().get(right_ptr as u32)).centroid(),
-                    )
-                {
-                    right_ptr -= 1;
-                }
-
-                mesh.triangles.swap(left_ptr, right_ptr);
-            }
-        }
+        let right_ptr =
+            Self::reorder_with_bin_index(mesh, range, &full_bounds, best_cost_bin_index, longest_axis);
 
         // Recursively generate the branch
         let l = Self::split_with_sah(nodes, mesh, first..right_ptr, recursion_depth + 1);

@@ -58,6 +58,16 @@ impl BoundingBox {
         point.y >= self.min.y && point.y <= self.max.y &&
         point.z >= self.min.z && point.z <= self.max.z
     }
+
+    pub fn count_points_inside<It>(&self, points: It) -> usize where It: Iterator<Item=Vec3> {
+        let mut sum = 0;
+        for p in points {
+            if self.is_point_inside(p) {
+                sum += 1;
+            }
+        }
+        sum
+    }
 }
 
 /// A trait that should be implemented by anything that can be bounded via AABB.
