@@ -138,6 +138,7 @@ impl Bvh {
             }
         }
 
+        // Is the best split a no-split?
         if best_cost_is_leaf {
             nodes.push(BvhNode::Leaf {
                 bounds: full_bounds,
@@ -154,7 +155,7 @@ impl Bvh {
         // First we need to reorder the triangles to be able to express the BVH in terms of just
         // ranges. We do it by making two groups in the slice we have, one for the left bounds and
         // one for the right bounds, so left is literally on the left side and same for right
-        // group. Example result: [L, R, R, L, L] -> [L, L, L, R, R]
+        // group. Example: [L, R, R, L, L] slice becomes [L, L, L, R, R]
         let mut right_ptr = end - 1;
         for left_ptr in first..end {
             if right_ptr <= left_ptr {
