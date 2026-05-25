@@ -245,7 +245,7 @@ impl Bvh {
         Self { nodes, root: root }
     }
 
-    fn intersect_ray_x<F>(&self, ray: &Ray, node: u32, stopper: F) -> Result<Range<u32>, F>
+    fn intersect_ray_x<F>(&self, ray: &Ray, node: u32, stopper: &F) -> Option<Range<u32>>
     where
         F: Fn(Range<u32>) -> bool,
     {
@@ -254,22 +254,17 @@ impl Bvh {
             BvhNode::Branch { bounds, l, r } => {
                 // TODO: Bias closer AABBs to waste less iterations.
                 if bounds.intersect_ray(ray).is_some() {
-                    match self.intersect_ray_x(ray, *l, stopper) {
-                        Ok(range) => Ok(range),
-                        Err(stopper) => match self.intersect_ray_x(ray, *r, stopper) {
-                            Ok(range) => Ok(range),
-                            Err(stopper) => Err(stopper),
-                        },
-                    }
+                    self.intersect_ray_x(ray, *l, stopper)
+                        .or_else(|| self.intersect_ray_x(ray, *r, stopper))
                 } else {
-                    Err(stopper)
+                    None
                 }
             }
             BvhNode::Leaf { bounds, range } => {
                 if bounds.intersect_ray(ray).is_some() && stopper(range.clone()) {
-                    Ok(range.clone())
+                    Some(range.clone())
                 } else {
-                    Err(stopper)
+                    None
                 }
             }
         }
@@ -279,10 +274,7 @@ impl Bvh {
     where
         F: Fn(Range<u32>) -> bool,
     {
-        if let Ok(range) = self.intersect_ray_x(ray, self.root, stopper) {
-            Some((range.start as usize)..(range.end as usize))
-        } else {
-            None
-        }
+        self.intersect_ray_x(ray, self.root, &stopper)
+            .map(|r| (r.start as usize)..(r.end as usize))
     }
 }
