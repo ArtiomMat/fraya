@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use crate::{
     math::{
-        BoundingBox, Triangle,
+        BoundingBox, Ray, Triangle,
         aabb::{self, Bounded},
     },
     scene::Mesh,
@@ -11,8 +11,11 @@ pub use soup::Soup;
 
 pub mod soup;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Clone)]
-enum BvhNode {
+pub enum BvhNode {
     Branch {
         bounds: aabb::BoundingBox,
         l: u32,
@@ -28,7 +31,7 @@ enum BvhNode {
 
 pub struct Bvh {
     nodes: Vec<BvhNode>,
-    root: usize,
+    root: u32,
 }
 
 const BINS_NUM: usize = 12;
@@ -47,7 +50,8 @@ impl Bvh {
     /// `left_bounds_factor` is `0.0` to `1.0` and tells exactly where that
     /// split is along `axis` from left to right.
     ///
-    /// Returns left bounding box and right bounding box.
+    /// Returns the left and right bounding boxes resulting from the split in
+    /// that order.
     fn split_bounds(
         full_bounds: &BoundingBox,
         left_bounds_factor: f32,
@@ -66,28 +70,26 @@ impl Bvh {
 
     /// A wrapper for [Self::split_bounds] which determines the
     /// `left_bounds_factor` using `bin_index`.
-    /// 
+    ///
     /// Imagine it as a stepped version of the original.
     fn split_bounds_with_bin_index(
         full_bounds: &BoundingBox,
         bin_index: usize,
         axis: usize,
     ) -> (BoundingBox, BoundingBox) {
-        // How much the left bounds take from the full bounds on the longest
-        // axis. Imagine the line going from left to right depending on bin_index.
         let left_bounds_factor = bin_index as f32 / BINS_NUM as f32;
         Self::split_bounds(full_bounds, left_bounds_factor, axis)
     }
 
     /// Reorders the primitives in `range` by their centroids, depending on which
     /// sub-bounding-box they belong to in `full_bounds`.
-    /// `bin_index` dictates the split along `axis`, see 
+    /// `bin_index` dictates the split along `axis`, see
     /// [Self::split_bounds_with_bin_index] for how it's calculated.
-    /// 
+    ///
     /// Returns the first element in the right bounding-box, anything behind
     /// it(if any), belongs to the left bounding-box.
-    /// 
-    /// 
+    ///
+    ///
     /// We reorder by just swapping elements with 2 pointers that are to intersect.
     /// The idea is to swap until we have a clear separation between the primitives
     /// that are meant to go into.
@@ -212,8 +214,13 @@ impl Bvh {
         }
 
         // Finally perform the best split
-        let right_ptr =
-            Self::reorder_with_bin_index(mesh, range, &full_bounds, best_cost_bin_index, longest_axis);
+        let right_ptr = Self::reorder_with_bin_index(
+            mesh,
+            range,
+            &full_bounds,
+            best_cost_bin_index,
+            longest_axis,
+        );
 
         // Recursively generate the branch
         let l = Self::split_with_sah(nodes, mesh, first..right_ptr, recursion_depth + 1);
@@ -227,15 +234,55 @@ impl Bvh {
         return (nodes.len() - 1) as u32;
     }
 
+    /// Creates the BVH for this soup.
+    ///
     /// Optimizes the primitives' order for internal access reasons, doesn't
     /// care what they are only that an `aabb::Bound` can be made.
     pub fn new(mesh: &mut Mesh) -> Self {
         let mut nodes = Vec::<BvhNode>::new();
         let root = Self::split_with_sah(&mut nodes, mesh, 0..mesh.triangles.len(), 1);
 
-        Self {
-            nodes,
-            root: root as usize,
+        Self { nodes, root: root }
+    }
+
+    fn intersect_ray_x<F>(&self, ray: &Ray, node: u32, stopper: F) -> Result<Range<u32>, F>
+    where
+        F: Fn(Range<u32>) -> bool,
+    {
+        let root = &self.nodes[node as usize];
+        match root {
+            BvhNode::Branch { bounds, l, r } => {
+                // TODO: Bias closer AABBs to waste less iterations.
+                if bounds.intersect_ray(ray).is_some() {
+                    match self.intersect_ray_x(ray, *l, stopper) {
+                        Ok(range) => Ok(range),
+                        Err(stopper) => match self.intersect_ray_x(ray, *r, stopper) {
+                            Ok(range) => Ok(range),
+                            Err(stopper) => Err(stopper),
+                        },
+                    }
+                } else {
+                    Err(stopper)
+                }
+            }
+            BvhNode::Leaf { bounds, range } => {
+                if bounds.intersect_ray(ray).is_some() && stopper(range.clone()) {
+                    Ok(range.clone())
+                } else {
+                    Err(stopper)
+                }
+            }
+        }
+    }
+
+    pub fn intersect_ray<F>(&self, ray: &Ray, stopper: F) -> Option<Range<usize>>
+    where
+        F: Fn(Range<u32>) -> bool,
+    {
+        if let Ok(range) = self.intersect_ray_x(ray, self.root, stopper) {
+            Some((range.start as usize)..(range.end as usize))
+        } else {
+            None
         }
     }
 }

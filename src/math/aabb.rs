@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use crate::math::Vec3;
+use crate::math::{Ray, Vec3};
 
 /// By design only `Vec3` to avoid generics complexity.
 #[derive(Clone, Copy)]
@@ -57,6 +57,26 @@ impl BoundingBox {
         point.x >= self.min.x && point.x <= self.max.x &&
         point.y >= self.min.y && point.y <= self.max.y &&
         point.z >= self.min.z && point.z <= self.max.z
+    }
+
+
+    pub fn intersect_ray(&self, ray: &Ray) -> Option<f32> {
+        let ray_dir_inv = 1.0 / ray.direction;
+
+        let t_0 = (self.min - ray.origin) * ray_dir_inv;
+        let t_1 = (self.max - ray.origin) * ray_dir_inv;
+        
+        let t_min = t_0.min(t_1);
+        let t_max = t_0.max(t_1);
+
+        let t_enter = t_min.x.max(t_min.y).max(t_min.z);
+        let t_exit = t_max.x.min(t_max.y).min(t_max.z);
+
+        if t_enter <= t_exit && t_exit >= 0.0 {
+            Some(t_enter)
+        } else {
+            None
+        }
     }
 
     pub fn count_points_inside<It>(&self, points: It) -> usize where It: Iterator<Item=Vec3> {
