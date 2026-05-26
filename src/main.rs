@@ -21,11 +21,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     fastrand::seed(0);
 
-    let mut scene = Scene::load("tests/data/person.glb")?;
+    let mut scene = Scene::load("tests/data/WeirdBox.glb")?;
 
     let mut ws = WindowSurface::new([300, 300])?;
     let mut rt = RayTracer::new(
-        Image::new([250, 250]),
+        Image::new([400, 400]),
         Eye {
             position: Vec3::new(0.0, 0.0, 0.0),
             rotation: Quat::from_euler(glam::EulerRot::XYZ, 0.0, 0.0, 0.0),
