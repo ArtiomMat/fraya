@@ -60,6 +60,7 @@ impl BoundingBox {
     }
 
 
+    /// Returns entry `t`(distance along the ray), or None if no intersection.
     pub fn intersect_ray(&self, ray: &Ray) -> Option<f32> {
         let ray_dir_inv = 1.0 / ray.direction;
 

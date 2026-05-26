@@ -245,36 +245,56 @@ impl Bvh {
         Self { nodes, root: root }
     }
 
-    fn intersect_ray_x<F>(&self, ray: &Ray, node: u32, stopper: &F) -> Option<Range<u32>>
+    /// Helper for [`Self::intersect_ray`]
+    fn intersect_ray_x<F>(&self, ray: &Ray, node: u32, primitive_intersector: &F) -> Option<u32>
     where
-        F: Fn(Range<u32>) -> bool,
+        F: Fn(u32) -> Option<f32>,
     {
         let root = &self.nodes[node as usize];
         match root {
             BvhNode::Branch { bounds, l, r } => {
                 // TODO: Bias closer AABBs to waste less iterations.
+                // TODO: Use t-pruning to determine stop condition, will require propagation of `t_enter` from leaf.
+                // TODO: No ordering is present, t-pruning should fix it.
                 if bounds.intersect_ray(ray).is_some() {
-                    self.intersect_ray_x(ray, *l, stopper)
-                        .or_else(|| self.intersect_ray_x(ray, *r, stopper))
+                    self.intersect_ray_x(ray, *l, primitive_intersector)
+                        .or_else(|| self.intersect_ray_x(ray, *r, primitive_intersector))
                 } else {
                     None
                 }
             }
             BvhNode::Leaf { bounds, range } => {
-                if bounds.intersect_ray(ray).is_some() && stopper(range.clone()) {
-                    Some(range.clone())
-                } else {
-                    None
+                if bounds.intersect_ray(ray).is_none() {
+                    return None;
                 }
+
+                let mut best_t_enter = f32::INFINITY;
+                let mut best_i = None;
+
+                for i in range.clone() {
+                    if let Some(t_enter) = primitive_intersector(i) {
+                        if t_enter < best_t_enter {
+                            best_t_enter = t_enter;
+                            best_i = Some(i);
+                        }
+                    }
+                }
+
+                best_i
             }
         }
     }
 
-    pub fn intersect_ray<F>(&self, ray: &Ray, stopper: F) -> Option<Range<usize>>
+    /// Performs broad-phase intersection checks recursively, and uses
+    /// `primitive_intersector` for narrow-phase intersection.
+    ///
+    /// `primitive_intersector` accepts an index of a primitive within the soup.
+    /// Its job is to intersect it and report the `t_enter` associated with
+    /// that primitive.
+    pub fn intersect_ray<F>(&self, ray: &Ray, primitive_intersector: F) -> Option<u32>
     where
-        F: Fn(Range<u32>) -> bool,
+        F: Fn(u32) -> Option<f32>,
     {
-        self.intersect_ray_x(ray, self.root, &stopper)
-            .map(|r| (r.start as usize)..(r.end as usize))
+        self.intersect_ray_x(ray, self.root, &primitive_intersector)
     }
 }
