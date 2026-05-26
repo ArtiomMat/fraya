@@ -21,8 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     fastrand::seed(0);
 
-    let mut scene = Scene::load("tests/data/WeirdBox.glb")?;
-    Bvh::new(&mut scene.meshes[0]);
+    let mut scene = Scene::load("tests/data/person.glb")?;
 
     let mut ws = WindowSurface::new([300, 300])?;
     let mut rt = RayTracer::new(

@@ -1,6 +1,6 @@
 use std::ops::{Add, Deref, DerefMut, Div, Mul};
 
-use crate::math::{BoundingBox, Vec3, aabb::Bounded};
+use crate::math::{BoundingBox, EPSILON, Ray, Vec3, aabb::Bounded};
 
 #[derive(Clone, Copy)]
 pub struct Triangle<T>([T; 3]);
@@ -35,6 +35,52 @@ where
 
     pub fn interpolate_barycentric(&self, u: f32, v: f32, w: f32) -> T {
         self[0] * u + self[1] * v + self[2] * w
+    }
+}
+
+impl Triangle<Vec3> {
+    pub fn intersect_ray(&self, ray: &Ray) -> Option<f32> {
+        // Möller–Trumbore algorithm
+
+        let e1 = self[1] - self[0];
+        let e2 = self[2] - self[0];
+
+        // Backface culling, for now CCW hardcoded
+        let normal = e1.cross(e2);
+        if normal.dot(ray.direction) > 0.0 {
+            return None;
+        }
+
+        // Half-plane intersection?
+        let ray_cross_e2 = ray.direction.cross(e2);
+        let det = e1.dot(ray_cross_e2);
+        if det.abs() < EPSILON {
+            return None; // Ray is parallel to the triangle's plane
+        }
+
+        // Triangle intersection with barycentric-coordinates
+        let idet = 1.0 / det;
+        let s = ray.origin - self[0]; // To derive u and v
+
+        let u = idet * s.dot(ray_cross_e2);
+        if u < -EPSILON || u - 1.0 > EPSILON {
+            return None; // Ray leaks off e2
+        }
+
+        let s_cross_e1 = s.cross(e1);
+        let v = idet * s_cross_e1.dot(ray.direction);
+        if v < -EPSILON || u + v - 1.0 > EPSILON {
+            return None; // Ray leaks off e1
+        }
+
+        // We intersected
+        let t = idet * e2.dot(s_cross_e1);
+
+        if t > EPSILON {
+            Some(t)
+        } else {
+            None // Behind the ray
+        }
     }
 }
 

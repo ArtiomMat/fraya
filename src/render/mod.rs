@@ -2,6 +2,7 @@ pub use eye::Eye;
 
 pub mod eye;
 
+use crate::bvh::Bvh;
 use crate::math::{EPSILON, Ray, Triangle, Vec3, vec3};
 use crate::scene::Scene;
 use crate::video::{Image, Pixel, Surface};
@@ -75,16 +76,20 @@ pub struct RayTracer {
     image: Image,
     eye: Eye,
     scene: Scene,
+    mesh_bvhs: Vec<Bvh>,
     aspect_ratio: f32,
 }
 
 impl RayTracer {
-    pub fn new(image: Image, eye: Eye, scene: Scene) -> Self {
+    pub fn new(image: Image, eye: Eye, mut scene: Scene) -> Self {
         let aspect_ratio = image.size[1] as f32 / image.size[0] as f32;
+        let mesh_bvhs = scene.meshes_mut().iter_mut().map(|m| Bvh::new(m)).collect();
+
         RayTracer {
             image,
             eye,
             scene,
+            mesh_bvhs,
             aspect_ratio,
         }
     }
@@ -181,57 +186,21 @@ impl RayTracer {
                     direction: self.eye.rotation * direction,
                 };
 
-                'triangle_search: for mesh in self.scene.meshes() {
-                    for (i, position_triangle) in mesh.position_triangles().enumerate() {
-                        // TODO: Hardcoded
-                        // Ray hit
-                        if let Some(ray_hit) =
-                            Self::calculate_ray_triangle_intersection(&ray, &position_triangle)
-                        {
-                            // WHITE
-                            // let pixel = Pixel { b: 255, g: 255, r: 255, a: 255 };
+                for (mesh, bvh) in self.scene.meshes().iter().zip(self.mesh_bvhs.iter()) {
+                    let intersection = bvh.intersect_ray(&ray, |ray, i| {
+                        let triangle = Triangle::from(mesh.position_triangle(i as usize));
+                        triangle.intersect_ray(ray)
+                    });
 
-                            // RANDOM COLOR BY INDEX
-                            // fastrand::seed(i as u64);
-                            // let pixel = Pixel {
-                            //     b: (fastrand::u8(32..=255)),
-                            //     g: (fastrand::u8(32..=255)),
-                            //     r: (fastrand::u8(32..=255)),
-                            //     a: 255,
-                            // };
-
-                            // SPLIT BASED COLOR
-                            // NOTE: The split index is tied to where the BVH splits it.
-                            // This is for debugging purposes it's a shitty way to do it
-                            // but it will be improved.
-                            //
-                            // Tuned for BVH construction of WeirdBox
-                            let split_index = 26;
-                            let pixel = if i >= split_index {
-                                Pixel {
-                                    b: 0,
-                                    g: 0,
-                                    r: 255,
-                                    a: 255,
-                                }
-                            } else {
-                                Pixel {
-                                    b: 255,
-                                    g: 128,
-                                    r: 0,
-                                    a: 255,
-                                }
-                            };
-                            let factor = ((5.0 - (ray.origin - ray_hit).length()) / 4.0).clamp(0.0, 1.0);
-                            // let factor = 1.0;
-                            self.image.pixels[(x + y * self.image.size[0]) as usize] = Pixel {
-                                b: (pixel.b as f32 * factor) as u8,
-                                g: (pixel.g as f32 * factor) as u8,
-                                r: (pixel.r as f32 * factor) as u8,
-                                a: 255,
-                            };
-                            break 'triangle_search;
-                        }
+                    if let Some((_triangle_i, t)) = intersection {
+                        let pixel = Pixel { b: 255, g: 255, r: 255, a: 255 };
+                        let factor = ((5.0 - t) / 4.0).clamp(0.0, 1.0);
+                        self.image.pixels[(x + y * self.image.size[0]) as usize] = Pixel {
+                            b: (pixel.b as f32 * factor) as u8,
+                            g: (pixel.g as f32 * factor) as u8,
+                            r: (pixel.r as f32 * factor) as u8,
+                            a: 255,
+                        };
                     }
                 }
             }

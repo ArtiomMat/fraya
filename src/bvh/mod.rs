@@ -246,9 +246,9 @@ impl Bvh {
     }
 
     /// Helper for [`Self::intersect_ray`]
-    fn intersect_ray_x<F>(&self, ray: &Ray, node: u32, primitive_intersector: &F) -> Option<u32>
+    fn intersect_ray_x<F>(&self, ray: &Ray, node: u32, primitive_intersector: &F) -> Option<(u32, f32)>
     where
-        F: Fn(u32) -> Option<f32>,
+        F: Fn(&Ray, u32) -> Option<f32>,
     {
         let root = &self.nodes[node as usize];
         match root {
@@ -272,7 +272,7 @@ impl Bvh {
                 let mut best_i = None;
 
                 for i in range.clone() {
-                    if let Some(t_enter) = primitive_intersector(i) {
+                    if let Some(t_enter) = primitive_intersector(ray, i) {
                         if t_enter < best_t_enter {
                             best_t_enter = t_enter;
                             best_i = Some(i);
@@ -280,7 +280,7 @@ impl Bvh {
                     }
                 }
 
-                best_i
+                best_i.zip(Some(best_t_enter))
             }
         }
     }
@@ -288,12 +288,13 @@ impl Bvh {
     /// Performs broad-phase intersection checks recursively, and uses
     /// `primitive_intersector` for narrow-phase intersection.
     ///
-    /// `primitive_intersector` accepts an index of a primitive within the soup.
+    /// `primitive_intersector` accepts the ray and an index of a primitive 
+    /// within the soup.
     /// Its job is to intersect it and report the `t_enter` associated with
     /// that primitive.
-    pub fn intersect_ray<F>(&self, ray: &Ray, primitive_intersector: F) -> Option<u32>
+    pub fn intersect_ray<F>(&self, ray: &Ray, primitive_intersector: F) -> Option<(u32, f32)>
     where
-        F: Fn(u32) -> Option<f32>,
+        F: Fn(&Ray, u32) -> Option<f32>,
     {
         self.intersect_ray_x(ray, self.root, &primitive_intersector)
     }

@@ -58,6 +58,10 @@ impl Scene {
         &self.meshes
     }
 
+    pub fn meshes_mut(&mut self) -> &mut [Mesh] {
+        &mut self.meshes
+    }
+
     /// Loads mesh data from the holy trinity into document
     pub fn load_meshes(
         scene: &mut Scene,
@@ -135,6 +139,7 @@ impl Scene {
         Ok(())
     }
 
+    // TODO: Finish and integrate into loading
     pub fn load_objects(
         scene: &mut Scene,
         document: &gltf::Document,
