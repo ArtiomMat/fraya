@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     fastrand::seed(0);
 
-    let mut scene = Scene::load("tests/data/person.glb")?;
+    let mut scene = Scene::load("tests/data/Monkey.glb")?;
 
     let mut ws = WindowSurface::new([300, 300])?;
     let mut rt = RayTracer::new(
@@ -60,9 +60,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         eye_controller.control_eye(rt.eye_mut());
 
+        let now = std::time::Instant::now();
         rt.render_scene();
+        println!("render_scene millis: {}", now.elapsed().as_millis());
 
         ws.update_image(rt.raw_image()).expect("Couldn't update");
+
 
         std::thread::sleep(Duration::from_millis(20));
     }

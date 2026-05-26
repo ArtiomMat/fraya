@@ -6,9 +6,11 @@ Development start: 16th of April 2026
 
 # Current state
 
-Renders an ico-sphere.
+Renders a monkey at a relatively solid ~12 FPS(depends on distance) with 15,744 triangles.
 
-![Demo](screenshots/sphere-2026-04-24_18.57.56.gif)
+BVH depth is 16, 24 depth gives slightly better results.
+
+![Demo](screenshots/monkey_bvh-2026-05-26_22.22.26.png)
 
 # TODO
 
@@ -25,5 +27,8 @@ Renders an ico-sphere.
     - [x] For now via iterating one by one.
 - [ ] BVH(May move)
     - [x] Cleanup some the APIs particularly `Triangle`.
-    - [ ] SAH-based AABB implemntation.
+    - [x] SAH-based AABB implemntation.
+    - [x] Very naive traversal over the BVH.
+    - [ ] T-pruning in traversal.
+    - [ ] First visit the closer AABB.
 - [ ] Point light

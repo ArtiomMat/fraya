@@ -192,8 +192,15 @@ impl RayTracer {
                         triangle.intersect_ray(ray)
                     });
 
-                    if let Some((_triangle_i, t)) = intersection {
-                        let pixel = Pixel { b: 255, g: 255, r: 255, a: 255 };
+                    if let Some((triangle_i, t)) = intersection {
+                        // let pixel = Pixel { b: 255, g: 255, r: 255, a: 255 };
+                        fastrand::seed(triangle_i as u64);
+                        let pixel = Pixel {
+                            b: (fastrand::u8(32..=255)),
+                            g: (fastrand::u8(32..=255)),
+                            r: (fastrand::u8(32..=255)),
+                            a: 255,
+                        };
                         let factor = ((5.0 - t) / 4.0).clamp(0.0, 1.0);
                         self.image.pixels[(x + y * self.image.size[0]) as usize] = Pixel {
                             b: (pixel.b as f32 * factor) as u8,
