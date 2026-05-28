@@ -1,6 +1,6 @@
 # Fraya
 
-An OK software PBR ray-tracer.
+An OK software path-tracer.
 
 Development start: 16th of April 2026
 

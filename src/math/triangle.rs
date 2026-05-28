@@ -40,6 +40,9 @@ where
 
 impl Triangle<Vec3> {
     pub fn intersect_ray(&self, ray: &Ray) -> Option<f32> {
+        // FIXME: On edges of models with small triangles they get pruned.
+        // The phenomenon is most visible with the 15k triangle Monkey.
+
         // Möller–Trumbore algorithm
 
         let e1 = self[1] - self[0];
@@ -54,7 +57,9 @@ impl Triangle<Vec3> {
         // Half-plane intersection?
         let ray_cross_e2 = ray.direction.cross(e2);
         let det = e1.dot(ray_cross_e2);
-        if det.abs() < EPSILON {
+        // XXX: Usually there is a comparison with EPSILON.
+        // But even reasonable EPSILON causes small triangles to get pruned.
+        if det.abs() <= 0.0 {
             return None; // Ray is parallel to the triangle's plane
         }
 

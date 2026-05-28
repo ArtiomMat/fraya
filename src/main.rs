@@ -35,14 +35,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
         scene,
     );
-    let triangle = [
-        Vec3::new(-0.7, 0.5, -2.5),
-        Vec3::new(-0.7, 0.0, -4.0),
-        Vec3::new(0.7, 0.7, -2.0),
-    ];
     let mut eye_controller = EyeController::new(0.2);
 
-    rt.eye_mut().position = Vec3::new(0.0, 0.0, 5.0);
+    rt.eye_mut().position = Vec3::new(0.0, 0.0, 3.0);
     rt.eye_mut().rotation = Quat::from_euler(glam::EulerRot::ZYX, 0.0, 0.0, 0.0);
 
     'running: loop {
@@ -60,9 +55,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         eye_controller.control_eye(rt.eye_mut());
 
-        let now = std::time::Instant::now();
+        // let now = std::time::Instant::now();
         rt.render_scene();
-        println!("render_scene millis: {}", now.elapsed().as_millis());
+        // println!("render_scene millis: {}", now.elapsed().as_millis());
 
         ws.update_image(rt.raw_image()).expect("Couldn't update");
 

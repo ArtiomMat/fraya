@@ -60,8 +60,8 @@ impl BoundingBox {
     }
 
 
-    /// Returns entry `t`(distance along the ray), or None if no intersection.
-    pub fn intersect_ray(&self, ray: &Ray) -> Option<f32> {
+    /// Returns `(t_enter, t_exit)`, or None if no intersection.
+    pub fn intersect_ray(&self, ray: &Ray) -> Option<(f32, f32)> {
         let ray_dir_inv = 1.0 / ray.direction;
 
         let t_0 = (self.min - ray.origin) * ray_dir_inv;
@@ -74,7 +74,7 @@ impl BoundingBox {
         let t_exit = t_max.x.min(t_max.y).min(t_max.z);
 
         if t_enter <= t_exit && t_exit >= 0.0 {
-            Some(t_enter)
+            Some((t_enter, t_exit))
         } else {
             None
         }

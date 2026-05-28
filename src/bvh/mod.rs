@@ -245,42 +245,81 @@ impl Bvh {
         Self { nodes, root: root }
     }
 
+    /// Intersects the ray with the underlying bounds of the node whether a leaf or branch.
+    fn intersect_ray_with_node_bounds(&self, ray: &Ray, node_index: u32) -> Option<(f32, f32)> {
+        let node = &self.nodes[node_index as usize];
+        let bounds = match node {
+            BvhNode::Branch { bounds, .. } => { bounds }
+            BvhNode::Leaf { bounds, .. } => { bounds }
+        };
+        bounds.intersect_ray(ray)
+    }
+
     /// Helper for [`Self::intersect_ray`]
-    fn intersect_ray_x<F>(&self, ray: &Ray, node: u32, primitive_intersector: &F) -> Option<(u32, f32)>
+    ///
+    /// `t_max` is part of the t-pruning process.
+    fn intersect_ray_x<F>(&self, t_max: &mut f32, ray: &Ray, node_index: u32, primitive_intersector: &F) -> Option<(u32, f32)>
     where
         F: Fn(&Ray, u32) -> Option<f32>,
     {
-        let root = &self.nodes[node as usize];
-        match root {
+        let node = &self.nodes[node_index as usize];
+        match node {
             BvhNode::Branch { bounds, l, r } => {
                 // TODO: Bias closer AABBs to waste less iterations.
                 // TODO: Use t-pruning to determine stop condition, will require propagation of `t_enter` from leaf.
                 // TODO: No ordering is present, t-pruning should fix it.
-                if bounds.intersect_ray(ray).is_some() {
-                    self.intersect_ray_x(ray, *l, primitive_intersector)
-                        .or_else(|| self.intersect_ray_x(ray, *r, primitive_intersector))
+                // if bounds.intersect_ray(ray).is_some() {
+                //     self.intersect_ray_x(ray, *l, primitive_intersector)
+                //         .or_else(|| self.intersect_ray_x(ray, *r, primitive_intersector))
+                // } else {
+                //     None
+                // }
+
+                if let Some((t_enter, _)) = bounds.intersect_ray(ray) {
+                    if t_enter > *t_max {
+                        return None;
+                    }
+
+                    let left = self.intersect_ray_x(t_max, ray, *l, primitive_intersector);
+                    let right = self.intersect_ray_x(t_max, ray, *r, primitive_intersector);
+
+                    match (left, right) {
+                        (Some(l), Some(r)) => if l.1 < r.1 { Some(l) } else { Some(r) }
+                        (Some(l), None) => Some(l),
+                        (None, Some(r)) => Some(r),
+                        _ => None,
+                    }
                 } else {
                     None
                 }
             }
             BvhNode::Leaf { bounds, range } => {
-                if bounds.intersect_ray(ray).is_none() {
-                    return None;
-                }
+                if let Some((t_enter, _)) = bounds.intersect_ray(ray) {
+                    if t_enter > *t_max {
+                        return None;
+                    }
 
-                let mut best_t_enter = f32::INFINITY;
-                let mut best_i = None;
+                    let mut best_t_enter = f32::INFINITY;
+                    let mut best_i = None;
 
-                for i in range.clone() {
-                    if let Some(t_enter) = primitive_intersector(ray, i) {
-                        if t_enter < best_t_enter {
-                            best_t_enter = t_enter;
-                            best_i = Some(i);
+                    for i in range.clone() {
+                        if let Some(t_enter) = primitive_intersector(ray, i) {
+                            if t_enter < best_t_enter {
+                                best_t_enter = t_enter;
+                                best_i = Some(i);
+                            }
                         }
                     }
-                }
 
-                best_i.zip(Some(best_t_enter))
+                    if let Some(best_i) = best_i {
+                        *t_max = best_t_enter;
+                        Some((best_i, best_t_enter))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
             }
         }
     }
@@ -296,6 +335,7 @@ impl Bvh {
     where
         F: Fn(&Ray, u32) -> Option<f32>,
     {
-        self.intersect_ray_x(ray, self.root, &primitive_intersector)
+        let mut t_max = f32::INFINITY;
+        self.intersect_ray_x(&mut t_max, ray, self.root, &primitive_intersector)
     }
 }
