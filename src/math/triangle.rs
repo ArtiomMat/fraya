@@ -40,7 +40,6 @@ where
 
 impl Triangle<Vec3> {
     pub fn intersect_ray(&self, ray: &Ray) -> Option<f32> {
-        // FIXME: On edges of models with small triangles they get pruned.
         // The phenomenon is most visible with the 15k triangle Monkey.
 
         // Möller–Trumbore algorithm

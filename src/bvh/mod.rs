@@ -42,10 +42,6 @@ impl Bvh {
     // TODO: Instead of a slice of primitives accept a type that itself can
     // give an iterator or generate an AABB on random access.
 
-    fn calculate_cost<T: Bounded>(bounded: T, primitives_num: usize) -> f32 {
-        bounded.aabb_bound().surface_area() * (primitives_num as f32)
-    }
-
     /// Takes the `full_bounds` and creates a split along `axis`.
     /// `left_bounds_factor` is `0.0` to `1.0` and tells exactly where that
     /// split is along `axis` from left to right.
@@ -265,16 +261,6 @@ impl Bvh {
         let node = &self.nodes[node_index as usize];
         match node {
             BvhNode::Branch { bounds, l, r } => {
-                // TODO: Bias closer AABBs to waste less iterations.
-                // TODO: Use t-pruning to determine stop condition, will require propagation of `t_enter` from leaf.
-                // TODO: No ordering is present, t-pruning should fix it.
-                // if bounds.intersect_ray(ray).is_some() {
-                //     self.intersect_ray_x(ray, *l, primitive_intersector)
-                //         .or_else(|| self.intersect_ray_x(ray, *r, primitive_intersector))
-                // } else {
-                //     None
-                // }
-
                 if let Some((t_enter, _)) = bounds.intersect_ray(ray) {
                     if t_enter > *t_max {
                         return None;

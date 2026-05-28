@@ -201,7 +201,7 @@ impl RayTracer {
                         //     r: (fastrand::u8(32..=255)),
                         //     a: 255,
                         // };
-                        let factor = ((5.0 - t) / 4.0).clamp(0.0, 1.0);
+                        let factor = ((1.0 - t) / 1.0).clamp(0.0, 1.0);
                         self.image.pixels[(x + y * self.image.size[0]) as usize] = Pixel {
                             b: (pixel.b as f32 * factor) as u8,
                             g: (pixel.g as f32 * factor) as u8,
@@ -209,48 +209,6 @@ impl RayTracer {
                             a: 255,
                         };
                     }
-                }
-            }
-        }
-    }
-
-    // TODO: Hardcoded and not intended to exist in future
-    // TODO: Return a sort of "Report" struct that reports how many samples
-    //       were made this iteration and stuff. But OFC that's for later...
-    pub fn render_single_triangle(&mut self, triangle: &[Vec3; 3]) {
-        // TODO: Figure out how to give freedom of changing FOV
-
-        // Fill with black.
-        self.image.pixels.fill(Pixel::default());
-
-        // Shooting each ray towards the unit screen
-        for x in 0..self.image.size[0] {
-            // TODO: Signs on x and y are hardcoded, but depend on image pixel order.
-            for y in 0..self.image.size[1] {
-                let direction = Vec3::new(
-                    vec3::RIGHT.x
-                        * 2.0
-                        * (x as f32 / self.image.size[0] as f32 - 0.5)
-                        * self.aspect_ratio,
-                    -vec3::UP.y * 2.0 * (y as f32 / self.image.size[1] as f32 - 0.5),
-                    vec3::FORWARD.z,
-                )
-                .normalize();
-
-                let ray = Ray {
-                    origin: self.eye.position,
-                    direction: self.eye.rotation * direction,
-                };
-
-                // TODO: Hardcoded
-                // Ray hit
-                if let Some(ray_hit) = Self::calculate_ray_triangle_intersection(&ray, triangle) {
-                    self.image.pixels[(x + y * self.image.size[0]) as usize] = Pixel {
-                        b: 0,
-                        g: (255.0 * (ray_hit.z.abs() - 1.0) / 5.0) as u8,
-                        r: 0,
-                        a: 255,
-                    };
                 }
             }
         }
