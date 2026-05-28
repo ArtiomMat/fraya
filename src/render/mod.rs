@@ -158,7 +158,7 @@ impl RayTracer {
         //        Reason: We stop iteration when we see the first hit.
         //        But actually we need to stop when it's the closest
         //        hit.
-        //        
+        //
         //        Fix it when you have a proper BVH right now it will
         //        obliterate FPS.
 
@@ -172,11 +172,11 @@ impl RayTracer {
             // TODO: Signs on x and y are hardcoded, but depend on image pixel order.
             for y in 0..self.image.size[1] {
                 let direction = Vec3::new(
-                    vec3::RIGHT.x
+                    vec3::RIGHT.x * 2.0 * (x as f32 / self.image.size[0] as f32 - 0.5),
+                    -vec3::UP.y
                         * 2.0
-                        * (x as f32 / self.image.size[0] as f32 - 0.5)
+                        * (y as f32 / self.image.size[1] as f32 - 0.5)
                         * self.aspect_ratio,
-                    -vec3::UP.y * 2.0 * (y as f32 / self.image.size[1] as f32 - 0.5),
                     vec3::FORWARD.z,
                 )
                 .normalize();
@@ -193,7 +193,12 @@ impl RayTracer {
                     });
 
                     if let Some((triangle_i, t)) = intersection {
-                        let pixel = Pixel { b: 255, g: 255, r: 255, a: 255 };
+                        let pixel = Pixel {
+                            b: 255,
+                            g: 255,
+                            r: 255,
+                            a: 255,
+                        };
                         // fastrand::seed(triangle_i as u64);
                         // let pixel = Pixel {
                         //     b: (fastrand::u8(32..=255)),
@@ -201,7 +206,7 @@ impl RayTracer {
                         //     r: (fastrand::u8(32..=255)),
                         //     a: 255,
                         // };
-                        let factor = ((1.0 - t) / 1.0).clamp(0.0, 1.0);
+                        let factor = ((2.5 - t) / 2.5).clamp(0.0, 1.0);
                         self.image.pixels[(x + y * self.image.size[0]) as usize] = Pixel {
                             b: (pixel.b as f32 * factor) as u8,
                             g: (pixel.g as f32 * factor) as u8,
