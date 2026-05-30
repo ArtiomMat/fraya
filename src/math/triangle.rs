@@ -39,7 +39,22 @@ where
 }
 
 impl Triangle<Vec3> {
-    pub fn intersect_ray(&self, ray: &Ray) -> Option<f32> {
+}
+
+// Vec3 triangle can be AABB bounded.
+impl Bounded for Triangle<Vec3> {
+    fn aabb_bound(&self) -> super::BoundingBox {
+        // AABB is the minimum vector of the vertices and the maximum
+        BoundingBox {
+            min: self[2].min(self[0].min(self[1])),
+            max: self[2].max(self[0].max(self[1])),
+        }
+    }
+}
+
+/// Just a proxy to [`Triangle::intersect_ray()`].
+impl RayIntersectable<()> for Triangle<Vec3> {
+    fn intersect_ray(&self, ray: &Ray) -> Option<(f32, ())> {
         // The phenomenon is most visible with the 15k triangle Monkey.
 
         // Möller–Trumbore algorithm
@@ -81,27 +96,9 @@ impl Triangle<Vec3> {
         let t = idet * e2.dot(s_cross_e1);
 
         if t > EPSILON {
-            Some(t)
+            Some((t, ()))
         } else {
             None // Behind the ray
         }
-    }
-}
-
-// Vec3 triangle can be AABB bounded.
-impl Bounded for Triangle<Vec3> {
-    fn aabb_bound(&self) -> super::BoundingBox {
-        // AABB is the minimum vector of the vertices and the maximum
-        BoundingBox {
-            min: self[2].min(self[0].min(self[1])),
-            max: self[2].max(self[0].max(self[1])),
-        }
-    }
-}
-
-/// Just a proxy to [`Triangle::intersect_ray()`].
-impl RayIntersectable<()> for Triangle<Vec3> {
-    fn intersect_ray(&self, ray: &Ray) -> Option<(f32, ())> {
-        self::Triangle::intersect_ray(&self, ray).map(|x| (x, ()))
     }
 }

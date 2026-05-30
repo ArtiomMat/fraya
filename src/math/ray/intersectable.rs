@@ -15,6 +15,9 @@ struct SliceIntersectionMetadata<M> {
 /// 
 /// The most logical implementation is to iterate element after element and test
 /// intersection against it.
+/// 
+/// Useful for narrow-phase intersection or when the broad-phase itself is just
+/// a flat array.
 impl<M, T: RayIntersectable<M>> RayIntersectable<SliceIntersectionMetadata<M>> for [T] {
     fn intersect_ray(&self, ray: &Ray) -> Option<(f32, SliceIntersectionMetadata<M>)> {
         let mut best_t_enter = None;

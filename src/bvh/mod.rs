@@ -279,6 +279,7 @@ impl Bvh {
                     None
                 }
             }
+            // TODO: Stuck here, incorporating `RayIntersectable` for `[T]`.
             BvhNode::Leaf { bounds, range } => {
                 if let Some((t_enter, _)) = bounds.intersect_ray(ray) {
                     if t_enter > *t_max {

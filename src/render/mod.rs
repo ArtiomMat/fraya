@@ -3,6 +3,7 @@ pub use eye::Eye;
 pub mod eye;
 
 use crate::bvh::Bvh;
+use crate::math::ray::RayIntersectable;
 use crate::math::{EPSILON, Ray, Triangle, Vec3, vec3};
 use crate::scene::Scene;
 use crate::video::{Image, Pixel, Surface};
@@ -189,7 +190,7 @@ impl RayTracer {
                 for (mesh, bvh) in self.scene.meshes().iter().zip(self.mesh_bvhs.iter()) {
                     let intersection = bvh.intersect_ray(&ray, |ray, i| {
                         let triangle = Triangle::from(mesh.position_triangle(i as usize));
-                        triangle.intersect_ray(ray)
+                        triangle.intersect_ray(ray).map(|x| x.0)
                     });
 
                     if let Some((triangle_i, t)) = intersection {
