@@ -1,6 +1,6 @@
 use std::ops::{Add, Deref, DerefMut, Div, Mul};
 
-use crate::math::{BoundingBox, EPSILON, Ray, Vec3, aabb::Bounded};
+use crate::math::{BoundingBox, EPSILON, Ray, Vec3, aabb::Bounded, ray::RayIntersectable};
 
 #[derive(Clone, Copy)]
 pub struct Triangle<T>([T; 3]);
@@ -96,5 +96,12 @@ impl Bounded for Triangle<Vec3> {
             min: self[2].min(self[0].min(self[1])),
             max: self[2].max(self[0].max(self[1])),
         }
+    }
+}
+
+/// Just a proxy to [`Triangle::intersect_ray()`].
+impl RayIntersectable<()> for Triangle<Vec3> {
+    fn intersect_ray(&self, ray: &Ray) -> Option<(f32, ())> {
+        self::Triangle::intersect_ray(&self, ray).map(|x| (x, ()))
     }
 }
