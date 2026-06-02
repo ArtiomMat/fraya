@@ -5,3 +5,4 @@ pub use intersectable::RayIntersectable;
 
 mod ray;
 mod intersectable;
+mod intersectable_once;
