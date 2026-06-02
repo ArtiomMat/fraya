@@ -7,44 +7,43 @@ pub trait RayIntersectable<Metadata> {
     fn intersect_ray(&self, ray: &Ray) -> Option<(f32, Metadata)>;
 }
 
-struct SliceIntersectionMetadata<M> {
-    i: usize,
-    inner: M,
+pub trait RayIntersectableOnce<Metadata> {
+    fn intersect_ray_once(self, ray: &Ray) -> Option<(f32, Metadata)>;
 }
-/// Blanket implementation for `[T]` when `T` implements `RayIntersectable<M>`.
+
+struct MetadataWithIndex<M> {
+    pub i: usize,
+    pub inner: M,
+}
+/// Blanket implementation for `Iterator<T>` when `T` implements `RayIntersectable<M>`.
 /// 
 /// The most logical implementation is to iterate element after element and test
 /// intersection against it.
 /// 
 /// Useful for narrow-phase intersection or when the broad-phase itself is just
 /// a flat array.
-impl<M, T: RayIntersectable<M>> RayIntersectable<SliceIntersectionMetadata<M>> for [T] {
-    fn intersect_ray(&self, ray: &Ray) -> Option<(f32, SliceIntersectionMetadata<M>)> {
-        let mut best_t_enter = None;
-        let mut best_metadata = None;
-        let mut best_i = None;
+impl<M, T: RayIntersectable<M>, U: Iterator<Item = T>> RayIntersectableOnce<MetadataWithIndex<M>> for U {
+    fn intersect_ray_once(self, ray: &Ray) -> Option<(f32, MetadataWithIndex<M>)> {
+        let mut best: Option<(f32, usize, M)> = None;
 
-        for (i, primitive) in self.iter().enumerate() {
-            if let Some((t_enter, metadata)) = primitive.intersect_ray(ray) {
-                if t_enter < best_t_enter.unwrap_or(f32::INFINITY) {
-                    best_t_enter = Some(t_enter);
-                    best_metadata = Some(metadata);
-                    best_i = Some(i);
+        for (i, primitive) in self.enumerate() {
+            if let Some((t, metadata)) = primitive.intersect_ray(ray) {
+                if best.as_ref().map_or(true, |(bt, ..)| t < *bt) {
+                    best = Some((t, i, metadata));
                 }
             }
         }
 
-        if let Some(best_t_enter) = best_t_enter {
-            Some((
-                best_t_enter,
-                SliceIntersectionMetadata {
-                    inner: best_metadata.unwrap(),
-                    i: best_i.unwrap(),
-                },
-            ))
-        } else {
-            None
-        }
+        best.map(|(t, i, inner)| (t, MetadataWithIndex { i, inner }))
+    }
+}
+
+/// For `[T]` where `T` implements `RayItersectable`
+/// 
+/// Forwards to the iterator blanket implementation.
+impl<M, T: RayIntersectable<M>> RayIntersectable<MetadataWithIndex<M>> for [T] {
+    fn intersect_ray(&self, ray: &Ray) -> Option<(f32, MetadataWithIndex<M>)> {
+        self.iter().intersect_ray_once(ray)
     }
 }
 
